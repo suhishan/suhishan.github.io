@@ -1,11 +1,18 @@
 ---
 title: "Learning_quarto"
+format: html
+editor: visual
 ---
 
-## Quarto
+## Normal Distribution (Yayy!)
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+Let's look a simple standardized normal distribution with mean = 0 and standard deviation = 1.
 
 ```{r}
-1 + 1
+#| label : Normal Distribution
+#| include : false
+#| echo: false
+
+normal <- rnorm(100)
+head(normal)
 ```

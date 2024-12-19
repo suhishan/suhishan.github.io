@@ -54,7 +54,7 @@ $$
 However, in period 1, there is an incentive for dissonants to act congruent. This is because the model assumes that voters are willing to re-elect a candidate if and only if they receive a payoff, which only happens if you act in a congruent fashion.
 
 This logically implies a decision rule for a dissonant to act as congruent. A dissonant politician will act as congruent if:$$
-r_1 < \beta(\mu+E) \\
+r_1 < \beta(\mu+E) 
 $$
 $$
 \lambda = G\{\beta(\mu+E)\}

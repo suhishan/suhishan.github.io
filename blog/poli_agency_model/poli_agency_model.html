@@ -108,7 +108,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>s <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>), N, <span class="at">replace =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(s, <span class="at">n =</span> <span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code> [1] 1 1 1 1 0 1 0 0 1 1</code></pre>
+<pre><code> [1] 1 1 0 0 1 1 1 1 1 0</code></pre>
 </div>
 </div>
 <p>Voters receive a pay-off if <span class="math inline">\(e_t = s_t\)</span> and <span class="math inline">\(0\)</span> otherwise. There is a discounting factor <span class="math inline">\(\beta\)</span>, by which voters and politicians discount future returns.</p>
@@ -131,7 +131,8 @@ e_2(s,d) = (1-s_2)
 \]</span></p>
 <p>However, in period 1, there is an incentive for dissonants to act congruent. This is because the model assumes that voters are willing to re-elect a candidate if and only if they receive a payoff, which only happens if you act in a congruent fashion.</p>
 <p>This logically implies a decision rule for a dissonant to act as congruent. A dissonant politician will act as congruent if:<span class="math display">\[
-r_1 &lt; \beta(\mu+E) \\
+r_1 &lt; \beta(\mu+E)
+\]</span> <span class="math display">\[
 \lambda = G\{\beta(\mu+E)\}
 \]</span></p>
 <p>In words: if the rent (explicitly bribe) I receive in period 1 is less than my discounted returns from period 2, I will want to be in office in period 2. For that I must be re-elected and for that I must act as congruent in period 1. If <span class="math inline">\(\lambda\)</span> is the probability that a dissonant acts as congruent, then lambda can be obtained from the CDF of <span class="math inline">\(G\)</span>.</p>
@@ -155,8 +156,9 @@ r_1 &lt; \beta(\mu+E) \\
 <p>With this, we can model our payoff function.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>payoff <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="at">length =</span> N) </span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"># delta here is 1 and no payoff is 0</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>payoff <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(candpool <span class="sc">==</span> <span class="dv">2</span>, <span class="fu">ifelse</span>(r_1 <span class="sc">&gt;</span> beta<span class="sc">*</span>(<span class="fu">mean</span>(r_1) <span class="sc">+</span> E),<span class="dv">0</span>,<span class="dv">1</span>), <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>mu <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="dv">1</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co"># delta here is 1 and no payoff is 0</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>payoff <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(candpool <span class="sc">==</span> <span class="dv">2</span>, <span class="fu">ifelse</span>(r_1 <span class="sc">&gt;</span> beta<span class="sc">*</span>(mu <span class="sc">+</span> E),<span class="dv">0</span>,<span class="dv">1</span>), <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Two parameters are of utmost importance to us: <span class="math inline">\(\lambda\)</span> i.e.&nbsp;the probability that a dissonant acts as congruent, and <span class="math inline">\(\prod\)</span>, which can be written as:</p>
 <p><span class="math display">\[
@@ -177,7 +179,7 @@ r_1 &lt; \beta(\mu+E) \\
 <pre><code># A tibble: 1 × 3
   Lambda    Pi BigPi
    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-1   0.91  0.52  0.53</code></pre>
+1   0.82  0.47  0.53</code></pre>
 </div>
 </div>
 </section>

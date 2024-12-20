@@ -108,7 +108,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>s <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>), N, <span class="at">replace =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(s, <span class="at">n =</span> <span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code> [1] 1 1 0 0 1 1 1 1 1 0</code></pre>
+<pre><code> [1] 1 0 0 1 1 0 1 1 0 0</code></pre>
 </div>
 </div>
 <p>Voters receive a pay-off if <span class="math inline">\(e_t = s_t\)</span> and <span class="math inline">\(0\)</span> otherwise. There is a discounting factor <span class="math inline">\(\beta\)</span>, by which voters and politicians discount future returns.</p>
@@ -179,9 +179,88 @@ r_1 &lt; \beta(\mu+E)
 <pre><code># A tibble: 1 × 3
   Lambda    Pi BigPi
    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-1   0.82  0.47  0.53</code></pre>
+1   0.86 0.505  0.54</code></pre>
 </div>
 </div>
+</section>
+<section id="on-turnover." class="level3">
+<h3 class="anchored" data-anchor-id="on-turnover.">On Turnover.</h3>
+<p>The theory states that an incumbent is re-elected if and only if voters receive some payoff <span class="math inline">\(\Delta\)</span>. As such, the only possible way for there to be turnover is if a dissonant politician is elected in the first term <span class="math inline">\((1-\pi)\)</span> and she acts dissonant <span class="math inline">\((1-\lambda)\)</span>.</p>
+<p><span class="math display">\[
+Turnover (t) = (1-\pi)\cdot(1-\lambda)
+\]</span></p>
+<p>In code:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>t <span class="ot">=</span> (<span class="dv">1</span><span class="sc">-</span>emp_pi)<span class="sc">*</span>(<span class="dv">1</span><span class="sc">-</span>emp_lambda); t<span class="co"># or t = sum(payoff == 0)/N</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.07</code></pre>
+</div>
+</div>
+<p>Let’s compile all of this code into a neat little function:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>payoff_func <span class="ot">&lt;-</span> <span class="cf">function</span>(mu, N, beta, pi, E) {</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>), N, <span class="at">replace =</span> <span class="cn">TRUE</span>) <span class="co"># randomized states of the world.</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  candpool <span class="ot">&lt;-</span> <span class="fu">rbinom</span>(N,<span class="dv">1</span>, <span class="at">prob =</span> <span class="dv">1</span><span class="sc">-</span>pi) <span class="sc">+</span><span class="dv">1</span> <span class="co"># candidate pool. 1 for congruent and 2 for dissonants</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  r_1 <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(N[candpool <span class="sc">==</span> <span class="dv">2</span>], <span class="at">mean =</span> mu, <span class="at">sd =</span> <span class="dv">10</span>) <span class="co">#realized rents in period 1.</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  payoff <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="at">length =</span> N) <span class="co"># delta here is 1 and no payoff is 0</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  payoff <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(candpool <span class="sc">==</span> <span class="dv">2</span>, <span class="fu">ifelse</span>(r_1 <span class="sc">&lt;</span> beta<span class="sc">*</span>(mu <span class="sc">+</span> E),<span class="dv">1</span>,<span class="dv">0</span>), <span class="dv">1</span>)</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  emp_pi <span class="ot">&lt;-</span> <span class="fu">sum</span>(candpool <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">/</span> <span class="fu">length</span>(candpool)</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  emp_lambda<span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> (<span class="fu">sum</span>(payoff <span class="sc">==</span> <span class="dv">0</span>)<span class="sc">/</span><span class="fu">sum</span>(candpool <span class="sc">==</span> <span class="dv">2</span>))</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  big_pi <span class="ot">&lt;-</span> emp_pi<span class="sc">/</span> (emp_pi <span class="sc">+</span> (<span class="dv">1</span><span class="sc">-</span>emp_pi)<span class="sc">*</span>emp_lambda)</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  t <span class="ot">&lt;-</span> <span class="fu">sum</span>(payoff <span class="sc">==</span> <span class="dv">0</span>)<span class="sc">/</span>N</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> (<span class="fu">round</span>(<span class="fu">tibble</span>(emp_lambda,</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>              pi,</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>              emp_pi,</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>              big_pi,</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>         t),<span class="dv">3</span>))</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="comparisons-and-implications" class="level3">
+<h3 class="anchored" data-anchor-id="comparisons-and-implications">Comparisons and Implications</h3>
+<p>This function allows us to see changes in <span class="math inline">\(t\)</span>, <span class="math inline">\(\lambda\)</span> and other important variable implications given changes in parameters.</p>
+<section id="effect-of-change-in-pi-on-voters-updated-beliefs." class="level4">
+<h4 class="anchored" data-anchor-id="effect-of-change-in-pi-on-voters-updated-beliefs.">Effect of change in <span class="math inline">\(\pi\)</span> on voter’s updated beliefs.</h4>
+<p>For eg: Let’s compare a world full of benevolence <span class="math inline">\(\pi = 0.8\)</span>, with that of distrust and corruption <span class="math inline">\(\pi = 0.2\)</span>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>benevolence <span class="ot">&lt;-</span> <span class="fu">payoff_func</span>(<span class="at">mu =</span> <span class="fu">exp</span>(<span class="dv">1</span>), <span class="at">N =</span> <span class="fl">1e4</span>, <span class="at">beta =</span> <span class="fl">0.9</span>, <span class="at">pi =</span> <span class="fl">0.8</span>, <span class="at">E =</span> <span class="dv">1</span>); benevolence</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 5
+  emp_lambda    pi emp_pi big_pi     t
+       &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+1      0.527   0.8  0.801  0.884 0.094</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>corrupt <span class="ot">&lt;-</span> <span class="fu">payoff_func</span>(<span class="at">mu =</span> <span class="fu">exp</span>(<span class="dv">1</span>), <span class="at">N =</span> <span class="fl">1e4</span>, <span class="at">beta =</span> <span class="fl">0.9</span>, <span class="at">pi =</span> <span class="fl">0.2</span>, <span class="at">E =</span> <span class="dv">1</span>); corrupt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 5
+  emp_lambda    pi emp_pi big_pi     t
+       &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+1      0.519   0.2  0.199  0.324 0.385</code></pre>
+</div>
+</div>
+<p>Two implications stand out. First, the probability of turnover is much higher in a corrupt world (i.e.&nbsp;a world where the candidate pool is full of dissonant politicians). Second, voters update their beliefs on the candidate pool much more in a corrupt world than in a benevolent one.</p>
+<p>This is made clear by the following plot.</p>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="poli_agency_model_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="cell-output-display">
+<p><img src="poli_agency_model_files/figure-html/unnamed-chunk-11-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>This plot shows change in voters belief about the proportion of congruent candidates in the candidate pool conditional on whether they received a payoff. Beliefs change much more around <span class="math inline">\(0.2\)</span> i.e.&nbsp;corrupt pool than around <span class="math inline">\(0.8\)</span>. Mathematically:</p>
+<p><span class="math display">\[
+Since, \space Change(C) = \prod-\pi = \frac{\pi}{\pi+(1-\pi)\cdot\lambda} - \pi
+\]</span></p>
+<p><span class="math display">\[
+\frac{\delta C}{\delta \pi} = \frac{\lambda}{(\pi+(1-\pi)\cdot\lambda)^2} -1
+\]</span></p>
+<p>As showcased by the plot, the rate of change of update belief is higher before the critical point than after it i.e.&nbsp;the slope around <span class="math inline">\(0.2\)</span> is higher than that around <span class="math inline">\(0.8\)</span>. This means given an initial state of <span class="math inline">\(\pi\)</span>, a <span class="math inline">\(10\)</span> % increase in congruent candidates leads to higher updated beliefs in an already corrupt world than in a benevolent one. This sounds confusing. Let’s use an example.</p>
+<p>Lets consider a voting district/constituency A. The current state of A is that there are only <span class="math inline">\(20\)</span>% congruent candidates. However, a new group of young candidates decide to run for the next election and join the candidate pool, turning <span class="math inline">\(20\)</span> to <span class="math inline">\(30\)</span> % congruency proportion. After the election takes place, and if voters receive some payoff from the incumbents policy action, this model assumes that voters update their beliefs on the type of incumbent by a larger magnitude than if the afore-mentioned situation had been a change from <span class="math inline">\(80\)</span> to <span class="math inline">\(90\)</span> % congruency proportion.</p>
+</section>
 </section>
 </section>
 

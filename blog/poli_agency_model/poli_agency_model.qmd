@@ -46,8 +46,7 @@ Since the game ends in period 2, the equilibrium in period 2 is that both types 
 
 $$
 e_2(s,c) = s_2
-$$
-$$
+$$ $$
 e_2(s,d) = (1-s_2)
 $$
 
@@ -55,8 +54,7 @@ However, in period 1, there is an incentive for dissonants to act congruent. Thi
 
 This logically implies a decision rule for a dissonant to act as congruent. A dissonant politician will act as congruent if:$$
 r_1 < \beta(\mu+E) 
-$$
-$$
+$$ $$
 \lambda = G\{\beta(\mu+E)\}
 $$
 
@@ -108,3 +106,94 @@ tibble(
   BigPi = round(big_pi,2)
 )
 ```
+
+### On Turnover.
+
+The theory states that an incumbent is re-elected if and only if voters receive some payoff $\Delta$. As such, the only possible way for there to be turnover is if a dissonant politician is elected in the first term $(1-\pi)$ and she acts dissonant $(1-\lambda)$.
+
+$$
+Turnover (t) = (1-\pi)\cdot(1-\lambda)
+$$
+
+In code:
+
+```{r}
+t = (1-emp_pi)*(1-emp_lambda); t# or t = sum(payoff == 0)/N
+```
+
+Let's compile all of this code into a neat little function:
+
+```{r}
+payoff_func <- function(mu, N, beta, pi, E) {
+  s <- sample(c(0,1), N, replace = TRUE) # randomized states of the world.
+  candpool <- rbinom(N,1, prob = 1-pi) +1 # candidate pool. 1 for congruent and 2 for dissonants
+  r_1 <- rnorm(N[candpool == 2], mean = mu, sd = 10) #realized rents in period 1.
+  
+  
+  payoff <- vector(length = N) # delta here is 1 and no payoff is 0
+  payoff <- ifelse(candpool == 2, ifelse(r_1 < beta*(mu + E),1,0), 1)
+  emp_pi <- sum(candpool == 1) / length(candpool)
+  emp_lambda<- 1 - (sum(payoff == 0)/sum(candpool == 2))
+  big_pi <- emp_pi/ (emp_pi + (1-emp_pi)*emp_lambda)
+  t <- sum(payoff == 0)/N
+  
+  return (round(tibble(emp_lambda,
+              pi,
+              emp_pi,
+              big_pi,
+         t),3))
+}
+```
+
+### Comparisons and Implications
+
+This function allows us to see changes in $t$, $\lambda$ and other important variable implications given changes in parameters.
+
+#### Effect of change in $\pi$ on voter's updated beliefs. 
+
+For eg: Let's compare a world full of benevolence $\pi = 0.8$, with that of distrust and corruption $\pi = 0.2$.
+
+```{r}
+benevolence <- payoff_func(mu = exp(1), N = 1e4, beta = 0.9, pi = 0.8, E = 1); benevolence
+corrupt <- payoff_func(mu = exp(1), N = 1e4, beta = 0.9, pi = 0.2, E = 1); corrupt
+```
+
+Two implications stand out. First, the probability of turnover is much higher in a corrupt world (i.e. a world where the candidate pool is full of dissonant politicians). Second, voters update their beliefs on the candidate pool much more in a corrupt world than in a benevolent one.
+
+This is made clear by the following plot.
+
+```{r}
+#| echo: false
+pi_values <- seq(0,1,by = 0.001)
+pi_change <- sapply(pi_values, function(pi)
+  payoff_func(mu = 30, N = 1e4, beta = 0.9, pi = pi, E = 10))
+
+pi_diff <- as.numeric(pi_change[4,]) - as.numeric(pi_change[3,])
+
+
+plot(pi_values, pi_change[4,], xlab = "Pi", ylab = "Updated belief on Pi (Big Pi)", cex = 0.3)
+abline(a = 0, b = 1, lty = 3)
+plot(pi_values,pi_diff, ylab = "Change in belief (Big Pi - pi)", xlab = "Proportion of Congruent Candidates",
+     main = "Change in voters belief.",
+    
+     cex = 0.3)
+
+abline(v=0.2, lty = 3)
+abline(v=0.8, lty = 3)
+abline(h = pi_diff[pi_values == 0.2], lty = 3, col ="#003f3f")
+
+```
+
+This plot shows change in voters belief about the proportion of congruent candidates in the candidate pool conditional on whether they received a payoff. Beliefs change much more around $0.2$ i.e. corrupt pool than around $0.8$. Mathematically:
+
+$$
+Since, \space Change(C) = \prod-\pi = \frac{\pi}{\pi+(1-\pi)\cdot\lambda} - \pi
+$$
+
+$$
+\frac{\delta C}{\delta \pi} = \frac{\lambda}{(\pi+(1-\pi)\cdot\lambda)^2} -1
+$$
+
+As showcased by the plot, the rate of change of update belief is higher before the critical point than after it i.e. the slope around $0.2$ is higher than that around $0.8$. This means given an initial state of $\pi$, a $10$ % increase in congruent candidates leads to higher updated beliefs in an already corrupt world than in a benevolent one. This sounds confusing. Let's use an example.
+
+Lets consider a voting district/constituency A. The current state of A is that there are only $20$% congruent candidates. However, a new group of young candidates decide to run for the next election and join the candidate pool, turning $20$ to $30$ % congruency proportion. After the election takes place, and if voters receive some payoff from the incumbents policy action, this model assumes that voters update their beliefs on the type of incumbent by a larger magnitude than if the afore-mentioned situation had been a change from $80$ to $90$ % congruency proportion.

@@ -1,0 +1,41 @@
+---
+title: "Understanding different methods to measure inequality."
+format: html
+editor: visual
+bibliography: references.bib
+---
+
+## The problem with the Gini Coefficient.
+
+The general framework for measuring inequality is the ubiquitous Gini Coefficient. While the general method is that of using the Lorenz Curve, there are a myriad ways of going about the task. One such alternative approach is to define Gini coefficient as half of the relative absolute mean difference. This was first proposed by Gini himself in his two papers *Variabilità e mutabilità (1912)* and *On the measurement of concentration and variability of characters (1914).* [@ceriani2011]
+
+$$
+G = \frac{1}{2n^2\bar{x}}\cdot \sum_{i}\sum_{j}|x_i-x_j|
+$$
+
+This formula can be derived from the definition of the Lorenz Curve as outlined in [@dorfman1979].
+
+Let's take an example. Consider a population of 1000, where their incomes are drawn from the log-normal distribution. [^1] In the Gini Coefficient measure, we are looking at absolute differences between all incomes, and logically, higher incomes show higher differences.
+
+[^1]: I am aware that incomes are generally in thousands of rupees or dollars, but for the sake of simplicity, I am assuming smaller values.
+
+```{r}
+N <- 1e3
+y <- rlnorm(1e4, meanlog = 2, 0.5)
+
+abs_diff_gini <- sapply(y, function(a) sum(abs(a - y)) )
+plot(abs_diff_gini~y,cex = 0.5, col = "blue",
+     ylab = "Sum of absolute differences",
+     xlab = "Income")
+abline(v = 5, lty = 2)
+abline(v = 25, lty = 2)
+
+```
+
+The sum of differences for income $25$ is significantly larger than that for $5$ and as such, the former ends up weighing more in the final Gini Measure.
+
+```{r}
+# log difference, mean log deviation.
+diff_mld <- sapply(y, function(a) log(mean(y)/a))
+plot(diff_mld~y, cex = 0.5)
+```

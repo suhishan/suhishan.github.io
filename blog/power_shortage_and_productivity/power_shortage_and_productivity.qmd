@@ -1,0 +1,8 @@
+---
+title: "A generative model for Power Shortage and Productivity (TFPR)"
+author: "Suhishan Bhandari"
+format: html
+editor: visual
+---
+
+## Introduction

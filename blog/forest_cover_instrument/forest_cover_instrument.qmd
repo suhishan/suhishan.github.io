@@ -1,0 +1,14 @@
+---
+title: "Can Forest Cover Work as an Intrument for Conflict Incidence?"
+bibliography: references.bib
+author: "Suhishan Bhandari"
+---
+
+
+### Can Forest Cover work as an instrument for Conflict Incidence?
+
+Forested areas do seem plausible grounds for increased guerilla activity but can it provide exogenous variation in conflict deaths/incidences to look at the causal effect of conflict incidence on some other variable. This is my attempt to try and understand this through multiple regression, a small generative causal model, and some actual data on conflict incidence in the Nepal's Maoist Insurgency/Civil War.
+
+## The Generative Causal Model:
+
+

@@ -210,3 +210,47 @@ nd %>%
               aes(y = Estimate, ymax = Q97.5, ymin = Q2.5))
 
 
+m3 <- brm(file = "/home/suhishan/Documents/Small R projects/Conflict and Forest Cover Bayes/fits/m2")
+
+
+
+
+
+
+
+
+
+# ------Full Luxury Bayes Type Model  -------------------------#
+
+
+c_model <- bf(cdp ~ 1 + f)
+e_model <- bf(f ~ 1 + e)
+e_model_sq <- bf(f ~ 1 + e_s2)
+
+
+m2_full <- brm(
+  data = nd,
+  family = gaussian,
+  c_model + e_model + set_rescor(FALSE),
+  
+  prior = c(
+    prior(normal(0, 0.2), class = Intercept, resp = cdp),
+    prior(normal(0, 0.5), class = b, resp = cdp),
+    prior(exponential(1), class = sigma, resp = cdp),
+    
+    prior(normal(0, 0.2), class = Intercept, resp = f),
+    prior(normal(0, 0.5), class = b, resp = f),
+    prior(exponential(1), class = sigma, resp = f)),
+  iter = 2000, warmup = 1000, seed = 5, cores = 4, chains = 4,
+  fit = "/home/suhishan/Documents/Small R projects/Conflict and Forest Cover Bayes/fits/m2_full"
+  
+)
+
+
+# ------Non linear in the same model
+
+m3 <- update(m2,
+             formula = cdp ~ 1 + f + e + e_s2,
+             newdata = nd)
+
+print(m3)

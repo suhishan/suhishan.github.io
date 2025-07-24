@@ -132,33 +132,31 @@ div.csl-indent {
 <li><p>The validity of forest cover itself as instrument, especially regarding the exclusion criterion, because it seems plausible to me that highly forested areas are generally rural areas, maybe poorer areas, while districts with better development and urbanization likely have cleared forests to do so.</p></li>
 </ol>
 <p>While this blog does not address all of these concerns ( and I end up employing a very different identification mechanism in my paper), here I try and replicate (albeit not entirely) their first stage regression if it does indeed hold up to some additional assumptions in the generative DAG.</p>
+<p>The main objective of this blog post is to incorporate uncertainty into the prediction of conflict deaths where forest cover is a predictor.</p>
 </section>
 <section id="the-generative-causal-model" class="level2">
 <h2 class="anchored" data-anchor-id="the-generative-causal-model">The Generative Causal Model:</h2>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>model_dag <span class="ot">&lt;-</span> <span class="fu">dagitty</span>(<span class="st">'dag{</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="st">CI -&gt; CD;</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="st">E -&gt; CI;</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="st">E -&gt; F;</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="st">F -&gt; CI;</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="st">P -&gt; CD;</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="st">P -&gt; CDP;</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="st">CD -&gt; CDP;</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="st">E -&gt; P;</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="st">}'</span>)</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">coordinates</span>(model_dag) <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> <span class="fu">c</span>(<span class="at">F =</span> <span class="dv">0</span>, <span class="at">E =</span> <span class="fl">0.5</span>,  <span class="at">CI =</span> <span class="dv">1</span>, <span class="at">CD =</span> <span class="dv">2</span>, <span class="at">P =</span> <span class="fl">2.5</span>, <span class="at">CDP =</span> <span class="dv">3</span>),</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> <span class="fu">c</span>(<span class="at">F =</span> <span class="dv">0</span>, <span class="at">E =</span> <span class="dv">1</span>,  <span class="at">CI =</span> <span class="dv">0</span>, <span class="at">CD =</span> <span class="dv">0</span>, <span class="at">P =</span> <span class="dv">1</span>, <span class="at">CDP =</span> <span class="dv">0</span> )</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">ggdag</span>(model_dag)<span class="sc">+</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_dag_blank</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="st">E -&gt; CDP;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="st">E -&gt; F;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="st">P -&gt; CDP;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="st">E -&gt; P;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="st">F -&gt; CDP</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="st">}'</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">coordinates</span>(model_dag) <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> <span class="fu">c</span>(<span class="at">F =</span> <span class="dv">0</span>, <span class="at">E =</span> <span class="dv">0</span>, <span class="at">P =</span> <span class="dv">1</span>, <span class="at">CDP =</span> <span class="dv">1</span>),</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> <span class="fu">c</span>(<span class="at">F =</span> <span class="dv">0</span>, <span class="at">E =</span> <span class="dv">1</span>, <span class="at">P =</span> <span class="dv">1</span>, <span class="at">CDP =</span> <span class="dv">0</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">ggdag</span>(model_dag)<span class="sc">+</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_dag_blank</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="forest_cover_instrument_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
-<p>This is a DAG I’ve drawn to see the implications of my model. F here represents the proportion of district that is covered by forests, E is the maximum elevation of a district, CI is the total conflict incidences that took place in the district between 1996 and 2006 A.D., CD is the best estimate of total conflict deaths between the 1996-2006, P is the population of Nepal for each district as per the 1991 Nepal Census, and CDP is Conflict Deaths per 1000 people/population</p>
+<p>This is a DAG I’ve drawn to see the implications of my model. F here represents the proportion of district that is covered by forests, E is the maximum elevation of a district, P is the population of Nepal for each district as per the 1991 Nepal Census, and CDP is Conflict Deaths per 1000 people/population</p>
 <p>As outlined in the graph, Elevation affects the the proportion of a district’s forest area as well as conflict incidences, and F is assumed to affect conflict incidences. The causal effect that we are trying to gauge is the effect of F on CDP.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">adjustmentSets</span>(model_dag, <span class="at">outcome =</span> <span class="st">"CDP"</span>, <span class="at">exposure =</span> <span class="st">"F"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -169,30 +167,25 @@ div.csl-indent {
 <p>The only variable we need to adjust for is E (the maximum elevation).</p>
 <p>The data used here is an amalgamation from <span class="citation" data-cites="do2010">(<a href="#ref-do2010" role="doc-biblioref">Do and Iyer 2010</a>)</span>, Uppsala Conflict Data Program(UCDP)<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> Dataset, and the population metrics from Nepal’s Census, the collection and cleaning of which I carried out for my own research. Given the generalizability of the DAG, readers can easily generate the datasets for themselves based on the relationships outlined in the DAG.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>standardize <span class="ot">&lt;-</span> rethinking<span class="sc">::</span>standardize <span class="co"># I use rethinking packages's standardize function to standardize the variables.</span></span>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>standardize <span class="ot">&lt;-</span> rethinking<span class="sc">::</span>standardize <span class="co"># I use tyhe rethinking packages's standardize function to standardize the variables.</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> d <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">f =</span> <span class="fu">standardize</span>(norm_forest),</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">ci =</span> <span class="fu">standardize</span>(incidents),</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">norm_forest =</span> <span class="fu">ifelse</span>(norm_forest <span class="sc">&gt;</span> <span class="fl">0.8</span>, <span class="fl">0.8</span>, norm_forest), <span class="co"># cap forest cover percentage at 80</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">f =</span> <span class="fu">standardize</span>(norm_forest),</span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">e =</span> <span class="fu">standardize</span>(elevation_max),</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">cd =</span> <span class="fu">standardize</span>(best_est), <span class="co">#best_est is the best estimate of the conflict deaths according to UCDP</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">p =</span> <span class="fu">standardize</span>(TotalPopn),</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">cdp =</span> <span class="fu">standardize</span>( (best_est<span class="sc">/</span>TotalPopn) <span class="sc">*</span> <span class="dv">1000</span>   )</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(</span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">cd =</span> <span class="fu">ifelse</span>(<span class="fu">is.na</span>(cd), <span class="dv">0</span>, cd),</span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">cdp =</span> <span class="fu">ifelse</span>(<span class="fu">is.na</span>(cdp), <span class="dv">0</span>, cdp)</span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># two districts which had no incidences </span></span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  <span class="co"># and therefore no deaths were classified NA</span></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>nd <span class="ot">&lt;-</span> d <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">e_s2 =</span> e<span class="sc">^</span><span class="dv">2</span>, <span class="co"># elevation squared for use later on.</span></span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>                   </span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>                   <span class="at">f =</span> <span class="fu">ifelse</span>(f <span class="sc">&gt;</span> <span class="dv">3</span>, <span class="fl">2.14</span>, f) ) <span class="co"># a district had 99% forest cover which is clearly implausible, so instead of removing it entirely from the dataset, I reassigned it to 80% i.e. 2.14 in standardized scale. There are better ways but for now this will do. </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">best_est =</span> <span class="fu">ifelse</span>(<span class="fu">is.na</span>(best_est), <span class="dv">0</span>, best_est),</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="co">#best_est is the best estimate of the conflict deaths according to UCDP</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">cd =</span> <span class="fu">standardize</span>(best_est), </span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">p =</span> <span class="fu">standardize</span>(TotalPopn),</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">cdp =</span> <span class="fu">standardize</span>( (best_est<span class="sc">/</span>TotalPopn) <span class="sc">*</span> <span class="dv">1000</span> ),</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">cdp_nostd =</span> <span class="fu">round</span>((best_est<span class="sc">/</span>TotalPopn) <span class="sc">*</span> <span class="dv">1000</span>, <span class="dv">4</span>) <span class="co">#Un-standardized conflict deaths per thousand people. </span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>nd <span class="ot">&lt;-</span> d <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">e_s2 =</span> e<span class="sc">^</span><span class="dv">2</span>) <span class="co"># elevation squared for use later on</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>We want to look at the causal effect of Forest Cover (f) on overall Conflict Deaths. First let’s look at a scatterplot on the relationship between Forest Cover(f) and Conflict Deaths per 1000 people (CDP)</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>plot_1 <span class="ot">&lt;-</span> d <span class="sc">%&gt;%</span> </span>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>plot_1 <span class="ot">&lt;-</span> nd <span class="sc">%&gt;%</span> </span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> f, <span class="at">y =</span> cdp))<span class="sc">+</span></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">2</span>, <span class="at">color =</span> <span class="st">"red"</span>, <span class="at">shape =</span> <span class="dv">1</span>)<span class="sc">+</span></span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
@@ -201,7 +194,7 @@ div.csl-indent {
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>plot_2 <span class="ot">&lt;-</span> d <span class="sc">%&gt;%</span> </span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>plot_2 <span class="ot">&lt;-</span> nd <span class="sc">%&gt;%</span> </span>
 <span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> e, <span class="at">y =</span> cdp))<span class="sc">+</span></span>
 <span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">2</span>, <span class="at">color =</span> <span class="st">"blue"</span>, <span class="at">shape =</span> <span class="dv">1</span>)<span class="sc">+</span></span>
 <span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
@@ -242,26 +235,28 @@ div.csl-indent {
 <span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  <span class="at">file =</span> <span class="st">"/home/suhishan/Documents/Small R projects/Conflict and Forest Cover Bayes/fits/m2"</span></span>
 <span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a><span class="fu">posterior_summary</span>(m1)[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>] <span class="sc">%&gt;%</span> <span class="fu">round</span>(<span class="at">digits =</span> <span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a><span class="fu">posterior_summary</span>(m1)[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>] <span class="sc">%&gt;%</span> <span class="fu">round</span>(<span class="at">digits =</span> <span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>            Estimate Est.Error   Q2.5 Q97.5
-b_Intercept    0.004     0.096 -0.182 0.196
-b_f            0.343     0.111  0.127 0.554
-sigma          0.942     0.081  0.801 1.120</code></pre>
+b_Intercept   -0.001     0.095 -0.184 0.193
+b_f            0.377     0.108  0.163 0.588
+sigma          0.938     0.080  0.799 1.104</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">posterior_summary</span>(m2)[<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>] <span class="sc">%&gt;%</span> <span class="fu">round</span>(<span class="at">digits =</span> <span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>            Estimate Est.Error   Q2.5 Q97.5
-b_Intercept    0.003     0.092 -0.177 0.183
-b_f            0.370     0.106  0.157 0.578
-b_e            0.318     0.101  0.126 0.519
-sigma          0.886     0.076  0.749 1.057</code></pre>
+b_Intercept    0.001     0.094 -0.183 0.188
+b_f            0.401     0.104  0.197 0.599
+b_e            0.280     0.101  0.081 0.475
+sigma          0.896     0.076  0.764 1.065</code></pre>
 </div>
 </div>
-<p>It turns out, the variable forest cover is robust to the inclusion of maximum elevation, with model 2 implying that a 1 standard deviation increase in forest cover is likely to result in 0.37 higher death rates per 1000 people. However, it must be carefully noted that this model specification implies and accounts only for a linear relationship between maximum elevation (e) and forest cover (f). This is a much overlooked fact in linear regression, whereby when controlling for potential biasing paths, the linear regression assumes a linear relationship between the predictors. However, if we do have different understanding of the relationship between the predictors, then the estimates for Forest Cover might still be biased.</p>
+<p>It turns out, the variable forest cover is robust to the inclusion of maximum elevation, with model 2 implying that a 1 standard deviation increase in forest cover is likely to result in 0.37 s.d. increase in conflict deaths per 1000 people.</p>
+<p>However, it must be carefully noted that this model specification implies and accounts only for a linear relationship between maximum elevation (e) and forest cover (f). This is a much overlooked fact in linear regression, whereby when controlling for potential biasing paths, the linear regression assumes a linear relationship between the predictors. However, if we do have different understanding of the relationship between the predictors, then the estimates for Forest Cover might still be biased.</p>
 <section id="a-much-overlooked-fact-about-linear-regression." class="level3">
 <h3 class="anchored" data-anchor-id="a-much-overlooked-fact-about-linear-regression.">A much overlooked fact about linear regression.</h3>
-<p>Controlling for elevation in our second model means that we</p>
+<p>Controlling for elevation in our second model means that we assume a linear relationship between forest cover and elevation. However, a simple scatterplot shows that it may not be the case.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Linear Model.</span></span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>m1<span class="fl">.1</span> <span class="ot">&lt;-</span> <span class="fu">update</span>(m1, </span>
@@ -279,84 +274,232 @@ sigma          0.886     0.076  0.749 1.057</code></pre>
 <span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">stat =</span> <span class="st">"identity"</span>,</span>
 <span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>              <span class="at">data =</span> fitted_1<span class="fl">.1</span>,</span>
 <span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">y =</span> Estimate, <span class="at">ymax =</span> Q97<span class="fl">.5</span>, <span class="at">ymin =</span> Q2<span class="fl">.5</span>),</span>
-<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="st">"firebrick"</span>)</span>
-<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Non-Linear Model</span></span>
-<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>m1<span class="fl">.2</span> <span class="ot">&lt;-</span> <span class="fu">update</span>(m1,</span>
-<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>               <span class="at">formula =</span> f <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> e <span class="sc">+</span> e_s2,</span>
-<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>               <span class="at">newdata =</span> nd)</span>
-<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="st">"firebrick"</span>)<span class="sc">+</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Elevation"</span>, <span class="at">y =</span> <span class="st">"Forest Cover"</span>)</span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Non-Linear Model</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>m1<span class="fl">.2</span> <span class="ot">&lt;-</span> <span class="fu">update</span>(m1,</span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>               <span class="at">formula =</span> f <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> e <span class="sc">+</span> e_s2,</span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>               <span class="at">newdata =</span> nd)</span>
 <span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>fitted_1<span class="fl">.2</span> <span class="ot">&lt;-</span> <span class="fu">fitted</span>(m1<span class="fl">.2</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>() <span class="sc">%&gt;%</span> </span>
-<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(nd)</span>
-<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>plot_1<span class="fl">.2</span> <span class="ot">&lt;-</span> nd <span class="sc">%&gt;%</span> </span>
-<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> e, <span class="at">y =</span> f))<span class="sc">+</span></span>
-<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">"firebrick"</span>,<span class="at">size =</span> <span class="dv">2</span>)<span class="sc">+</span></span>
-<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">stat =</span> <span class="st">"identity"</span>,</span>
-<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a>              <span class="at">data =</span> fitted_1<span class="fl">.2</span>,</span>
-<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">y =</span> Estimate, <span class="at">ymax =</span> Q97<span class="fl">.5</span>, <span class="at">ymin =</span> Q2<span class="fl">.5</span>),</span>
-<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="st">"firebrick"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>fitted_1<span class="fl">.2</span> <span class="ot">&lt;-</span> <span class="fu">fitted</span>(m1<span class="fl">.2</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(nd)</span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a>plot_1<span class="fl">.2</span> <span class="ot">&lt;-</span> nd <span class="sc">%&gt;%</span> </span>
+<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> e, <span class="at">y =</span> f))<span class="sc">+</span></span>
+<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">"firebrick"</span>,<span class="at">size =</span> <span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">stat =</span> <span class="st">"identity"</span>,</span>
+<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a>              <span class="at">data =</span> fitted_1<span class="fl">.2</span>,</span>
+<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">y =</span> Estimate, <span class="at">ymax =</span> Q97<span class="fl">.5</span>, <span class="at">ymin =</span> Q2<span class="fl">.5</span>),</span>
+<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="st">"firebrick"</span>)<span class="sc">+</span></span>
+<span id="cb10-38"><a href="#cb10-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Elevation"</span>, <span class="at">y =</span> <span class="st">"Forest Cover"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>plot_1<span class="fl">.1</span> <span class="sc">|</span> plot_1<span class="fl">.2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>plot_1<span class="fl">.1</span> </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="forest_cover_instrument_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid" width="864"></p>
 </div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>plot_1<span class="fl">.2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="forest_cover_instrument_files/figure-html/unnamed-chunk-9-2.png" class="img-fluid" width="864"></p>
 </div>
+</div>
+<p>As showcased by the two plots above, the relationship between elevation and forest cover is clearly not linear. I have imposed two models, one linear and one non-linear on the scatter plot to the distinction. Districts with extremely high and extremely low maximum elevation are less forested compared to Nepal’s hilly areas, which seems plausible and scientifically valid. However, controlling for elevation, as we did in model 2 (m2) implies a linear relationship. It seems important to include this scientific non-linear relationship into our model.</p>
+<p>One nice way to see if we see any differences in the coefficient for the relationship between Forest Cover and Conflict Deaths, based upon Forest Cover’s relationship to Elevation, is to do a residual regression. It is what regression is doing under the hood anyways. For this, we first estimate F ~ E (and F ~ nonlinear(E)). The residuals from this regression, which gives us F not influenced by E, can then be uses as a predictor for CDP.</p>
 <p>Residual plots.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Residuals from the linear model:</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>r_1 <span class="ot">&lt;-</span> <span class="fu">residuals</span>(m1<span class="fl">.1</span>)</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>nd<span class="sc">$</span>r_1 <span class="ot">&lt;-</span> r_1[,<span class="dv">1</span>]</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>m2<span class="fl">.1</span> <span class="ot">&lt;-</span> <span class="fu">update</span>(m1, </span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>               <span class="at">formula =</span> cdp <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> r_1,</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>               <span class="at">newdata =</span> nd)</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>fitted_2<span class="fl">.1</span> <span class="ot">&lt;-</span> <span class="fu">fitted</span>(m2<span class="fl">.1</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>() <span class="sc">%&gt;%</span> </span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(nd)</span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>plot_2<span class="fl">.1</span> <span class="ot">&lt;-</span> nd <span class="sc">%&gt;%</span> </span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> r_1, <span class="at">y =</span> cdp))<span class="sc">+</span></span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">"firebrick"</span>, <span class="at">size =</span> <span class="dv">2</span>)<span class="sc">+</span></span>
-<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">stat =</span> <span class="st">"identity"</span>,</span>
-<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>              <span class="at">data =</span> fitted_2<span class="fl">.1</span>,</span>
-<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">y =</span> Estimate, <span class="at">ymax =</span> Q97<span class="fl">.5</span>, <span class="at">ymin =</span> Q2<span class="fl">.5</span>),</span>
-<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="st">"firebrick"</span>)</span>
-<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>plot_2<span class="fl">.1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Residuals from the nonlinear model</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>r_2 <span class="ot">&lt;-</span> <span class="fu">residuals</span>(m1<span class="fl">.2</span>)</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>nd<span class="sc">$</span>r_2 <span class="ot">&lt;-</span> r_2[,<span class="dv">1</span>]</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>m2<span class="fl">.2</span> <span class="ot">&lt;-</span> <span class="fu">update</span>(m1, </span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>               <span class="at">formula =</span> cdp <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> r_2,</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>               <span class="at">newdata =</span> nd)</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>fitted_2<span class="fl">.2</span> <span class="ot">&lt;-</span> <span class="fu">fitted</span>(m2<span class="fl">.2</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>() <span class="sc">%&gt;%</span> </span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(nd)</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>plot_2<span class="fl">.2</span> <span class="ot">&lt;-</span> nd <span class="sc">%&gt;%</span> </span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> r_2, <span class="at">y =</span> cdp))<span class="sc">+</span></span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">"firebrick"</span>, <span class="at">size =</span> <span class="dv">2</span>)<span class="sc">+</span></span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">stat =</span> <span class="st">"identity"</span>,</span>
-<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>              <span class="at">data =</span> fitted_2<span class="fl">.2</span>,</span>
-<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">y =</span> Estimate, <span class="at">ymax =</span> Q97<span class="fl">.5</span>, <span class="at">ymin =</span> Q2<span class="fl">.5</span>),</span>
-<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="st">"firebrick"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Residuals from the linear model:</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>r_1 <span class="ot">&lt;-</span> <span class="fu">residuals</span>(m1<span class="fl">.1</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>nd<span class="sc">$</span>r_1 <span class="ot">&lt;-</span> r_1[,<span class="dv">1</span>]</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>m2<span class="fl">.1</span> <span class="ot">&lt;-</span> <span class="fu">update</span>(m1, </span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>               <span class="at">formula =</span> cdp <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> r_1,</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>               <span class="at">newdata =</span> nd)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>fitted_2<span class="fl">.1</span> <span class="ot">&lt;-</span> <span class="fu">fitted</span>(m2<span class="fl">.1</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(nd)</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>plot_2<span class="fl">.1</span> <span class="ot">&lt;-</span> nd <span class="sc">%&gt;%</span> </span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> r_1, <span class="at">y =</span> cdp))<span class="sc">+</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">"firebrick"</span>, <span class="at">size =</span> <span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">stat =</span> <span class="st">"identity"</span>,</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>              <span class="at">data =</span> fitted_2<span class="fl">.1</span>,</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">y =</span> Estimate, <span class="at">ymax =</span> Q97<span class="fl">.5</span>, <span class="at">ymin =</span> Q2<span class="fl">.5</span>),</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="st">"firebrick"</span>)</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a><span class="co">#Residuals from the nonlinear model</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>r_2 <span class="ot">&lt;-</span> <span class="fu">residuals</span>(m1<span class="fl">.2</span>)</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>nd<span class="sc">$</span>r_2 <span class="ot">&lt;-</span> r_2[,<span class="dv">1</span>]</span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>m2<span class="fl">.2</span> <span class="ot">&lt;-</span> <span class="fu">update</span>(m1, </span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>               <span class="at">formula =</span> cdp <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> r_2,</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>               <span class="at">newdata =</span> nd)</span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a>fitted_2<span class="fl">.2</span> <span class="ot">&lt;-</span> <span class="fu">fitted</span>(m2<span class="fl">.2</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(nd)</span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a>plot_2<span class="fl">.2</span> <span class="ot">&lt;-</span> nd <span class="sc">%&gt;%</span> </span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> r_2, <span class="at">y =</span> cdp))<span class="sc">+</span></span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">"firebrick"</span>, <span class="at">size =</span> <span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">stat =</span> <span class="st">"identity"</span>,</span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a>              <span class="at">data =</span> fitted_2<span class="fl">.2</span>,</span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">y =</span> Estimate, <span class="at">ymax =</span> Q97<span class="fl">.5</span>, <span class="at">ymin =</span> Q2<span class="fl">.5</span>),</span>
+<span id="cb13-40"><a href="#cb13-40" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="st">"firebrick"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>plot_2<span class="fl">.1</span> <span class="sc">|</span> plot_2<span class="fl">.2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">posterior_summary</span>(m2<span class="fl">.1</span>)[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>] <span class="sc">%&gt;%</span> <span class="fu">round</span>(<span class="at">digits =</span> <span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>            Estimate Est.Error   Q2.5 Q97.5
+b_Intercept    0.002     0.096 -0.185 0.188
+b_r_1          0.402     0.107  0.196 0.608
+sigma          0.928     0.077  0.793 1.098</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">posterior_summary</span>(m2<span class="fl">.2</span>)[<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>] <span class="sc">%&gt;%</span> <span class="fu">round</span>(<span class="at">digits =</span> <span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>            Estimate Est.Error   Q2.5 Q97.5
+b_Intercept   -0.001     0.094 -0.189 0.179
+b_r_2          0.366     0.125  0.117 0.606
+sigma          0.963     0.079  0.822 1.133
+Intercept      0.000     0.094 -0.187 0.179</code></pre>
+</div>
+</div>
+<p>It is clear from the posterior summary that the model with residuals from the non-linear model is more conservative on F’s relationship to Conflict Deaths and also more uncertain.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>plot_2<span class="fl">.1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="forest_cover_instrument_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="864"></p>
+<p><img src="forest_cover_instrument_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid" width="864"></p>
+</div>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>plot_2<span class="fl">.2</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="forest_cover_instrument_files/figure-html/unnamed-chunk-12-2.png" class="img-fluid" width="864"></p>
 </div>
 </div>
-
 </section>
+</section>
+<section id="predicting-conflict-deaths-per-1000-people-using-forest-cover-and-incorporating-uncertaininty." class="level2">
+<h2 class="anchored" data-anchor-id="predicting-conflict-deaths-per-1000-people-using-forest-cover-and-incorporating-uncertaininty.">Predicting Conflict Deaths per 1000 people using Forest Cover and incorporating Uncertaininty.</h2>
+<p>In the next figure, I predict conflict deaths per 1000 people for all values of forest cover, keeping elevation constant at its mean (i.e.&nbsp;e = 0)</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>pd <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">f  =</span> <span class="fu">seq</span>(<span class="sc">-</span><span class="dv">2</span>, <span class="dv">3</span>, <span class="at">length.out =</span> <span class="dv">40</span>),</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">e =</span> <span class="dv">0</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>m3 <span class="ot">&lt;-</span> <span class="fu">update</span>(m2,</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>             <span class="at">formula =</span> cdp <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> f <span class="sc">+</span> e <span class="sc">+</span> e_s2,</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>             <span class="at">newdata =</span> nd)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(m2,</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>        <span class="at">newdata =</span> pd) <span class="sc">%&gt;%</span> </span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(pd) <span class="sc">%&gt;%</span> </span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> f, <span class="at">y =</span> Estimate))<span class="sc">+</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">stat =</span> <span class="st">"identity"</span>,</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">ymin =</span> Q2<span class="fl">.5</span>, <span class="at">ymax =</span> Q97<span class="fl">.5</span>),</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="st">"firebrick"</span>, <span class="at">fill =</span> <span class="st">"firebrick"</span>, <span class="at">alpha =</span> <span class="dv">1</span><span class="sc">/</span><span class="dv">5</span>)<span class="sc">+</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Forest Cover (Std)"</span>,</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">"Counterfactual CDP"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="forest_cover_instrument_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid" width="864"></p>
+</div>
+</div>
+<p>As expected from our model’s posterior summaries above, forest cover does have a positive relationship with conflict deaths. This is a plot where I’ve manipulated forest cover myself, removing all biasing influences on it, and given this useful tool, what I am more interested in is the difference in predicted/counterfactual conflict deaths if I manipulated forest cover of a district from being in the 90th percentile (extremely forested) to the 10th percentile (mostly barren).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Seeing the quantiles</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">quantile</span>(nd<span class="sc">$</span>norm_forest, <span class="at">prob =</span> <span class="fu">c</span>(.<span class="dv">10</span>, .<span class="dv">90</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      10%       90% 
+0.1399955 0.6280999 </code></pre>
+</div>
+</div>
+<p>This amounts to going from a district with 13% forest cover to 62% forest cover, which one would assume has a significant impact on conflict deaths. Let’s see.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>diff_m3 <span class="ot">&lt;-</span> <span class="fu">predict</span>(m3,</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>        <span class="at">newdata =</span> <span class="fu">tibble</span>(<span class="at">f =</span> (<span class="fu">c</span>(<span class="fl">0.14</span>, <span class="fl">0.62</span>) <span class="sc">-</span> <span class="fl">0.39</span>)<span class="sc">/</span> <span class="fl">0.18</span>, <span class="co"># turning values into standardized scale</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>                         <span class="at">e =</span> <span class="dv">0</span>,</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>                         <span class="at">e_s2 =</span> <span class="dv">0</span>),</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>        <span class="at">summary =</span> F</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>        ) <span class="sc">%&gt;%</span> </span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_names</span>(<span class="st">"f_14"</span>, <span class="st">"f_62"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">difference =</span> ((f_62 <span class="sc">-</span> f_14) <span class="sc">*</span> <span class="fl">0.877</span> ) <span class="sc">+</span> <span class="fl">0.915</span> <span class="co"># mean and sd of conflict deaths per 1000 people. </span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(difference)</span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(diff_m3) <span class="sc">%&gt;%</span> </span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>()<span class="sc">+</span></span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="fu">aes</span>(<span class="at">x =</span> diff_m3), <span class="at">fill =</span> <span class="st">"firebrick4"</span>, <span class="at">alpha =</span> <span class="dv">1</span><span class="sc">/</span><span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">mean</span>(diff_m3), <span class="at">linetype =</span> <span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">subtitle =</span> <span class="st">"Difference in counterfactual conflict deaths per 1000 people </span><span class="sc">\n</span><span class="st">going from 10th to 90th percentile Forest Cover"</span>,</span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">"Conflict Deaths per 1000 people"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="forest_cover_instrument_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>The vertical line shows the mean value of the difference, which is 1.75.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(diff_m3)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1.737651</code></pre>
+</div>
+</div>
+<p>While most of the posterior density falls on the positive side, the posterior shows that there is still considerable uncertainty, which some density falling beyond 0, implying minimal or opposite effect. The difference is ever more uncertain when we use the 75th percentile cut-off, whereby the mean forest cover of districts with higher than 75th percentile forest cover are treatment and the rest control. Let’s compute the difference for this as well.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>nd <span class="sc">%&gt;%</span> </span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">t =</span> <span class="fu">ifelse</span>(norm_forest <span class="sc">&gt;</span> <span class="fu">quantile</span>(norm_forest, <span class="fl">0.75</span>), <span class="dv">1</span>, <span class="dv">0</span>) ) <span class="sc">%&gt;%</span> </span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(t) <span class="sc">%&gt;%</span> </span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="fu">mean</span>(norm_forest))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 2
+      t `mean(norm_forest)`
+  &lt;dbl&gt;               &lt;dbl&gt;
+1     0               0.310
+2     1               0.628</code></pre>
+</div>
+</div>
+<p>This amounts to looking the difference in conflict deaths per 1000 people between counterfactual districts of 31% forest cover and 63% forest cover.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>diff_m3_t <span class="ot">&lt;-</span> <span class="fu">predict</span>(m3,</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>        <span class="at">newdata =</span> <span class="fu">tibble</span>(<span class="at">f =</span> (<span class="fu">c</span>(<span class="fl">0.31</span>, <span class="fl">0.63</span>) <span class="sc">-</span> <span class="fl">0.39</span>)<span class="sc">/</span> <span class="fl">0.18</span>, <span class="co"># turning values into standardized scale</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>                         <span class="at">e =</span> <span class="dv">0</span>,</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>                         <span class="at">e_s2 =</span> <span class="dv">0</span>),</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>        <span class="at">summary =</span> F</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>        ) <span class="sc">%&gt;%</span> </span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_names</span>(<span class="st">"f_31"</span>, <span class="st">"f_63"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">difference =</span> ((f_63 <span class="sc">-</span> f_31) <span class="sc">*</span> <span class="fl">0.877</span> ) <span class="sc">+</span> <span class="fl">0.915</span> <span class="co"># mean and sd of conflict deaths per 1000 people. </span></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(difference)</span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(diff_m3_t, diff_m3) <span class="sc">%&gt;%</span> </span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">everything</span>()) <span class="sc">%&gt;%</span> </span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">group =</span> name))<span class="sc">+</span></span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="fu">aes</span>(<span class="at">x =</span> value, <span class="at">fill =</span> name), <span class="at">alpha =</span> <span class="dv">1</span><span class="sc">/</span><span class="dv">4</span>)<span class="sc">+</span></span>
+<span id="cb29-19"><a href="#cb29-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(</span>
+<span id="cb29-20"><a href="#cb29-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"diff_m3"</span> <span class="ot">=</span> <span class="st">"firebrick"</span>, <span class="st">"diff_m3_t"</span> <span class="ot">=</span> <span class="st">"blue"</span>),</span>
+<span id="cb29-21"><a href="#cb29-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"diff_m3"</span> <span class="ot">=</span> <span class="st">"90p - 10p F"</span>, <span class="st">"diff_m3_t"</span> <span class="ot">=</span> <span class="st">"75p cutoff F"</span>),</span>
+<span id="cb29-22"><a href="#cb29-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">name =</span> <span class="st">"Models"</span></span>
+<span id="cb29-23"><a href="#cb29-23" aria-hidden="true" tabindex="-1"></a>  )<span class="sc">+</span></span>
+<span id="cb29-24"><a href="#cb29-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">c</span>(<span class="fu">mean</span>(diff_m3), <span class="fu">mean</span>(diff_m3_t)), <span class="at">linetype =</span> <span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb29-25"><a href="#cb29-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Conflict Deaths per 1000 people"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="forest_cover_instrument_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>As is evident from the graph, the model used by <span class="citation" data-cites="menon2015">(<a href="#ref-menon2015" role="doc-biblioref">Menon and Van Der Meulen Rodgers 2015</a>)</span> is even more uncertain, with a lot more distribution falling wayside of 0.</p>
+
 </section>
 
 

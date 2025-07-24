@@ -1,0 +1,32 @@
+
+
+* Introduction
+
+Instruments, in an econometric sense, have always fascinated me. For one, they have alwways seemed
+to me like a statistical concoction, a construct, a design that makes sense to the head but feels
+wrong to the stomach. It doesn't help that the usual instruments used are rainfalls, droughts, and
+kinds of other natural phenomenon, and you wonder, can this really work? 
+
+I write this in the context of my own research, where I first wanted to look at the causal effect of
+the Nepal's Maoist Insurgency on children's education, and after finding out that the research was
+already done (like most of all research ideas), I opted to try and estimate the labor market
+implications of the said Civil War. Again, this research was already in print as well, but only for
+women's work. While reading the research by Menon and Rodgers, the use of the instrument bugged me
+again. 
+
+The use of the instrument in the paper is as follows:
+
+1. Nepal's districts are divided into treatment and control groups (conflict afflicted and not
+   afflicted) based on the proportion of their forest cover. The idea here is, districts with higher
+   forest cover were fertile grounds for higher conflict incidences and conflict deaths, and
+   therefore, if districts are divided such that districts with higher than 75th percentile forest
+   cover are treatment, the treatment/control mechanism is exogenous. The paper shows that forest
+   cover explains 25% variation in conflict deaths across districts. They say they are inspired by
+   Angrist's paper on exogenous change in cocoa plantation and violence. 
+
+My doubts concerning this are:
+
+1. First, conflict deaths is clearly not a binary indicator. 
+
+
+[ ] Do forest cover treatment and control. 

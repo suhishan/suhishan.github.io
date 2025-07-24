@@ -35,23 +35,22 @@ I had doubts regarding this approach for three reasons.
 
 While this blog does not address all of these concerns ( and I end up employing a very different identification mechanism in my paper), here I try and replicate (albeit not entirely) their first stage regression if it does indeed hold up to some additional assumptions in the generative DAG.
 
+The main objective of this blog post is to incorporate uncertainty into the prediction of conflict deaths where forest cover is a predictor. 
+
 ## The Generative Causal Model:
 
 ```{r}
 model_dag <- dagitty('dag{
-CI -> CD;
-E -> CI;
+E -> CDP;
 E -> F;
-F -> CI;
-P -> CD;
 P -> CDP;
-CD -> CDP;
 E -> P;
+F -> CDP
 }')
 
 coordinates(model_dag) <- list(
-  x = c(F = 0, E = 0.5,  CI = 1, CD = 2, P = 2.5, CDP = 3),
-  y = c(F = 0, E = 1,  CI = 0, CD = 0, P = 1, CDP = 0 )
+  x = c(F = 0, E = 0, P = 1, CDP = 1),
+  y = c(F = 0, E = 1, P = 1, CDP = 0)
 )
 
 ggdag(model_dag)+
@@ -59,7 +58,7 @@ ggdag(model_dag)+
 
 ```
 
-This is a DAG I've drawn to see the implications of my model. F here represents the proportion of district that is covered by forests, E is the maximum elevation of a district, CI is the total conflict incidences that took place in the district between 1996 and 2006 A.D., CD is the best estimate of total conflict deaths between the 1996-2006, P is the population of Nepal for each district as per the 1991 Nepal Census, and CDP is Conflict Deaths per 1000 people/population
+This is a DAG I've drawn to see the implications of my model. F here represents the proportion of district that is covered by forests, E is the maximum elevation of a district, P is the population of Nepal for each district as per the 1991 Nepal Census, and CDP is Conflict Deaths per 1000 people/population
 
 As outlined in the graph, Elevation affects the the proportion of a district's forest area as well as conflict incidences, and F is assumed to affect conflict incidences. The causal effect that we are trying to gauge is the effect of F on CDP.
 
@@ -80,33 +79,29 @@ d <- read_dta("/home/suhishan/Documents/Final Sem Research/Conflict/R files/fina
 
 ```{r}
 
-standardize <- rethinking::standardize # I use rethinking packages's standardize function to standardize the variables.
+standardize <- rethinking::standardize # I use tyhe rethinking packages's standardize function to standardize the variables.
 
 d <- d %>% mutate(
+  norm_forest = ifelse(norm_forest > 0.8, 0.8, norm_forest), # cap forest cover percentage at 80
   f = standardize(norm_forest),
-  ci = standardize(incidents),
   e = standardize(elevation_max),
-  cd = standardize(best_est), #best_est is the best estimate of the conflict deaths according to UCDP
+  best_est = ifelse(is.na(best_est), 0, best_est),
+  #best_est is the best estimate of the conflict deaths according to UCDP
+  cd = standardize(best_est), 
   p = standardize(TotalPopn),
-  cdp = standardize( (best_est/TotalPopn) * 1000   )
-  
-) %>% mutate(
-  cd = ifelse(is.na(cd), 0, cd),
-  cdp = ifelse(is.na(cdp), 0, cdp)
-  # two districts which had no incidences 
-  # and therefore no deaths were classified NA
+  cdp = standardize( (best_est/TotalPopn) * 1000 ),
+  cdp_nostd = round((best_est/TotalPopn) * 1000, 4) #Un-standardized conflict deaths per thousand people. 
 )
 
-nd <- d %>% mutate(e_s2 = e^2, # elevation squared for use later on.
+nd <- d %>% mutate(e_s2 = e^2) # elevation squared for use later on
                    
-                   f = ifelse(f > 3, 2.14, f) ) # a district had 99% forest cover which is clearly implausible, so instead of removing it entirely from the dataset, I reassigned it to 80% i.e. 2.14 in standardized scale. There are better ways but for now this will do. 
 
 ```
 
 We want to look at the causal effect of Forest Cover (f) on overall Conflict Deaths. First let's look at a scatterplot on the relationship between Forest Cover(f) and Conflict Deaths per 1000 people (CDP)
 
 ```{r, fig.width=8}
-plot_1 <- d %>% 
+plot_1 <- nd %>% 
   ggplot(aes(x = f, y = cdp))+
   geom_point(size = 2, color = "red", shape = 1)+
   labs(
@@ -115,7 +110,7 @@ plot_1 <- d %>%
   )
 
 
-plot_2 <- d %>% 
+plot_2 <- nd %>% 
   ggplot(aes(x = e, y = cdp))+
   geom_point(size = 2, color = "blue", shape = 1)+
   labs(
@@ -157,17 +152,20 @@ m2 <- brm(
   file = "/home/suhishan/Documents/Small R projects/Conflict and Forest Cover Bayes/fits/m2"
 )
 
+
 posterior_summary(m1)[1:3,1:4] %>% round(digits = 3)
 posterior_summary(m2)[1:4,1:4] %>% round(digits = 3)
 
 ```
 
-It turns out, the variable forest cover is robust to the inclusion of maximum elevation, with model 2 implying that a 1 standard deviation increase in forest cover is likely to result in 0.37 higher death rates per 1000 people. However, it must be carefully noted that this model specification implies and accounts only for a linear relationship between maximum elevation (e) and forest cover (f). This is a much overlooked fact in linear regression, whereby when controlling for potential biasing paths, the linear regression assumes a linear relationship between the predictors. However, if we do have different understanding of the relationship between the predictors, then the estimates for Forest Cover might still be biased. 
+It turns out, the variable forest cover is robust to the inclusion of maximum elevation, with model 2 implying that a 1 standard deviation increase in forest cover is likely to result in 0.37 s.d. increase in conflict deaths per 1000 people.
+
+However, it must be carefully noted that this model specification implies and accounts only for a linear relationship between maximum elevation (e) and forest cover (f). This is a much overlooked fact in linear regression, whereby when controlling for potential biasing paths, the linear regression assumes a linear relationship between the predictors. However, if we do have different understanding of the relationship between the predictors, then the estimates for Forest Cover might still be biased. 
 
 
 ### A much overlooked fact about linear regression.
 
-Controlling for elevation in our second model means that we 
+Controlling for elevation in our second model means that we assume a linear relationship between forest cover and elevation. However, a simple scatterplot shows that it may not be the case. 
 
 ```{r, output=FALSE}
 
@@ -187,7 +185,8 @@ plot_1.1 <- nd %>%
   geom_smooth(stat = "identity",
               data = fitted_1.1,
               aes(y = Estimate, ymax = Q97.5, ymin = Q2.5),
-              color = "firebrick")
+              color = "firebrick")+
+  labs(x = "Elevation", y = "Forest Cover")
 
 # Non-Linear Model
 
@@ -206,15 +205,20 @@ plot_1.2 <- nd %>%
   geom_smooth(stat = "identity",
               data = fitted_1.2,
               aes(y = Estimate, ymax = Q97.5, ymin = Q2.5),
-              color = "firebrick")
+              color = "firebrick")+
+  labs(x = "Elevation", y = "Forest Cover")
 
 
 ```
 
 ```{r, fig.width=9}
-plot_1.1 | plot_1.2
+plot_1.1 
+plot_1.2
 ```
 
+As showcased by the two plots above, the relationship between elevation and forest cover is clearly not linear. I have imposed two models, one linear and one non-linear on the scatter plot to the distinction.  Districts with extremely high and extremely low maximum elevation are less forested compared to Nepal's hilly areas, which seems plausible and scientifically valid. However, controlling for elevation, as we did in model 2 (m2) implies a linear relationship. It seems important to include this scientific non-linear relationship into our model. 
+
+One nice way to see if we see any differences in the coefficient for the relationship between Forest Cover and Conflict Deaths, based upon Forest Cover's relationship to Elevation, is to do a residual regression. It is what regression is doing under the hood anyways. For this, we first estimate F ~ E (and F ~ nonlinear(E)). The residuals from this regression, which gives us F not influenced by E, can then be uses as a predictor for CDP. 
 
 Residual plots.
 
@@ -238,8 +242,8 @@ plot_2.1 <- nd %>%
   geom_smooth(stat = "identity",
               data = fitted_2.1,
               aes(y = Estimate, ymax = Q97.5, ymin = Q2.5),
-              color = "firebrick")
-plot_2.1
+              color = "firebrick")+
+  labs(x = "Residual from Linear Model")
 
 #Residuals from the nonlinear model
 
@@ -260,11 +264,137 @@ plot_2.2 <- nd %>%
   geom_smooth(stat = "identity",
               data = fitted_2.2,
               aes(y = Estimate, ymax = Q97.5, ymin = Q2.5),
-              color = "firebrick")
-
+              color = "firebrick")+
+  labs(x = "Residual from non-linear model")
 
 
 ```
+
 ```{r, fig.width=9}
-plot_2.1 | plot_2.2
+posterior_summary(m2.1)[1:3,1:4] %>% round(digits = 3)
+posterior_summary(m2.2)[1:4,1:4] %>% round(digits = 3)
 ```
+It is clear from the posterior summary that the model with residuals from the non-linear model is more conservative on F's relationship to Conflict Deaths and also more uncertain. 
+
+```{r, fig.width = 9}
+plot_2.1
+plot_2.2
+```
+
+
+
+## Predicting Conflict Deaths per 1000 people using Forest Cover and incorporating Uncertaininty. 
+
+In the next figure, I predict conflict deaths per 1000 people for all values of forest cover, keeping elevation constant at its mean (i.e. e = 0) 
+
+```{r, output =FALSE}
+pd <- tibble(
+  f  = seq(-2, 3, length.out = 40),
+  e = 0
+)
+
+m3 <- update(m2,
+             formula = cdp ~ 1 + f + e + e_s2,
+             newdata = nd)
+
+```
+
+```{r, fig.width = 9}
+
+predict(m2,
+        newdata = pd) %>% 
+  bind_cols(pd) %>% 
+  
+  ggplot(aes(x = f, y = Estimate))+
+  geom_smooth(stat = "identity",
+              aes(ymin = Q2.5, ymax = Q97.5),
+              color = "firebrick", fill = "firebrick", alpha = 1/5)+
+  labs(x = "Forest Cover (Std)",
+       y = "Counterfactual CDP")
+
+```
+As expected from our model's posterior summaries above, forest cover does have a positive relationship with conflict deaths. This is a plot where I've manipulated forest cover myself, removing all biasing influences on it, and given this useful tool, what I am more interested in is the difference in predicted/counterfactual conflict deaths if I manipulated forest cover of a district from being in the 90th percentile (extremely forested) to the 10th percentile (mostly barren). 
+
+
+```{r}
+
+#Seeing the quantiles
+quantile(nd$norm_forest, prob = c(.10, .90))
+```
+This amounts to going from a district with 13% forest cover to 62% forest cover, which one would assume has a significant impact on conflict deaths. Let's see. 
+
+
+```{r}
+
+diff_m3 <- predict(m3,
+        newdata = tibble(f = (c(0.14, 0.62) - 0.39)/ 0.18, # turning values into standardized scale
+                         e = 0,
+                         e_s2 = 0),
+        summary = F
+        ) %>% 
+  data.frame() %>% 
+  set_names("f_14", "f_62") %>% 
+  mutate(
+    difference = ((f_62 - f_14) * 0.877 ) + 0.915 # mean and sd of conflict deaths per 1000 people. 
+  ) %>% 
+  pull(difference)
+
+
+  
+tibble(diff_m3) %>% 
+  ggplot()+
+  geom_density(aes(x = diff_m3), fill = "firebrick4", alpha = 1/2)+
+  geom_vline(xintercept = mean(diff_m3), linetype = 2)+
+  labs(subtitle = "Difference in counterfactual conflict deaths per 1000 people \ngoing from 10th to 90th percentile Forest Cover",
+       x = "Conflict Deaths per 1000 people")
+
+```
+The vertical line shows the mean value of the difference, which is 1.75.
+
+```{r}
+mean(diff_m3)
+```
+While most of the posterior density falls on the positive side, the posterior shows that there is still considerable uncertainty, which some density falling beyond 0, implying minimal or opposite effect. The difference is ever more uncertain when we use the 75th percentile cut-off, whereby the mean forest cover of districts with higher than 75th percentile forest cover are treatment and the rest control. Let's compute the difference for this as well.
+
+
+```{r}
+nd %>% 
+  mutate(t = ifelse(norm_forest > quantile(norm_forest, 0.75), 1, 0) ) %>% 
+  group_by(t) %>% 
+  summarize(mean(norm_forest))
+```
+This amounts to looking the difference in conflict deaths per 1000 people between counterfactual districts of 31% forest cover and 63% forest cover.
+
+```{r}
+diff_m3_t <- predict(m3,
+        newdata = tibble(f = (c(0.31, 0.63) - 0.39)/ 0.18, # turning values into standardized scale
+                         e = 0,
+                         e_s2 = 0),
+        summary = F
+        ) %>% 
+  data.frame() %>% 
+  set_names("f_31", "f_63") %>% 
+  mutate(
+    difference = ((f_63 - f_31) * 0.877 ) + 0.915 # mean and sd of conflict deaths per 1000 people. 
+  ) %>% 
+  pull(difference)
+
+  
+tibble(diff_m3_t, diff_m3) %>% 
+  pivot_longer(everything()) %>% 
+  ggplot(aes(group = name))+
+  geom_density(aes(x = value, fill = name), alpha = 1/4)+
+  scale_fill_manual(
+    values = c("diff_m3" = "firebrick", "diff_m3_t" = "blue"),
+    labels = c("diff_m3" = "90p - 10p F", "diff_m3_t" = "75p cutoff F"),
+    name = "Models"
+  )+
+  geom_vline(xintercept = c(mean(diff_m3), mean(diff_m3_t)), linetype = 2)+
+  labs(x = "Conflict Deaths per 1000 people")
+```
+As is evident from the graph, the model used by [@menon2015] is even more uncertain, with a lot more distribution falling wayside of 0. The posterior distributions show that while the most plausible effect is some amount of increased conflict deaths, I believe this is not enough evidence to classify districts into neat treatment and control groups and conduct our inference on that basis. 
+
+
+
+
+

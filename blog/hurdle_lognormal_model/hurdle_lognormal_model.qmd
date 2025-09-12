@@ -1,0 +1,10 @@
+--- 
+title : "How to use hurdled lognormal likelihood to model outcomes in R?"
+author : "Suhishan Bhandari"
+---
+
+
+``` {r, include = FALSE}
+library(tidyverse)
+library(brms)
+```

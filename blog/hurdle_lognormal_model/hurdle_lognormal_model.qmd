@@ -1,10 +1,37 @@
---- 
+---
 title : "How to use hurdled lognormal likelihood to model outcomes in R?"
 author : "Suhishan Bhandari"
+toc : TRUE
+fontsize : 20px
 ---
 
-
-``` {r, include = FALSE}
+```{r, include = FALSE}
 library(tidyverse)
 library(brms)
+
+theme_set(theme_minimal() +
+            theme(panel.grid = element_blank()))
+  
 ```
+
+# Introduction
+
+While working on a research project, I had to model *total hours worked*, which is a continuous metric that can be assumed to be normal, but with a sizable chunk of zeros as well. These values are all constrained to be positive because they are hours worked in the last 7 days. The problem is that in a standard OLS model, the outcome variable can take all possible real values, and even if I log the variable for positivity constraint, I am still left with the problem of modelling a sizable chunk of zeros that is expected when surveying people on their self-reported work hours. 
+
+Let's look at this with an example. Here, I simulate 250 observations of *work hours* as a log normal process with 15% of these values being 0 hours worked. 
+
+```{r}
+N <- 250 #250 observations
+
+d <- tibble(
+  isZero = rbinom(N, 1, 0.15), #15% 0 observations
+  wh = ifelse(isZero == 1, 0, rlnorm(N, 3.5, 0.4))
+) 
+
+d %>% 
+  ggplot(aes(wh)) + 
+  geom_histogram(bins = 40, fill = "skyblue2", color = "black")+
+  labs(x = "Work Hours")
+
+```
+

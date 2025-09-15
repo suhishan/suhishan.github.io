@@ -2,7 +2,8 @@
 title : "How to use hurdled lognormal likelihood to model outcomes in R?"
 author : "Suhishan Bhandari"
 toc : TRUE
-fontsize : 20px
+fontsize : 20px,
+fontfamily: OpenSans
 ---
 
 ```{r, include = FALSE}
@@ -21,7 +22,7 @@ While working on a research project, I had to model *total hours worked*, which 
 Let's look at this with an example. Here, I simulate 250 observations of *work hours* as a log normal process with 15% of these values being 0 hours worked. 
 
 ```{r}
-N <- 250 #250 observations
+N <- 1e3 #1e3 observations
 
 d <- tibble(
   isZero = rbinom(N, 1, 0.15), #15% 0 observations
@@ -34,4 +35,54 @@ d %>%
   labs(x = "Work Hours")
 
 ```
+Using a log normal distribution with the mean of around exp(3.5), we get a distribution of work hours that matches closely with reality. As we can see, if we assume 15% of people surveyed to report 0 hours worked, we are now working with a symmetric distribution that is bounded to be greater than 0 but is zero-inflated. While zero-inflated models are common for binomial or poisson processes, it is much harder to find and model variables that are zero-inflated while being continuous.
+
+# Modelling
+
+Let's take a peek at our model. We are assuming that wh is log normally distributed, which means that log(wh) is normally distributed. The model contains two parts. The first is only for the values of not being zero, that is the mu part. The second hu intercept is for the probability of a zero. 
+
+The prior is normal(3, 0.5) because we assume before looking at the data that the log(wh) is normal and as such, the non-zero part of it is going to follow a normal distribution.
+
+```{r, output = FALSE}
+model_1 <- brm(
+  data = d,
+  family = hurdle_lognormal,
+  bf(wh ~ 1,
+     hu ~ 1),
+  prior = c(
+    prior(normal(3, 0.5), class = Intercept, lb = 0),
+    prior(normal(-1, 1), dpar = "hu", class = Intercept),
+    prior(exponential(4), class = sigma)
+  ),
+  iter = 2e3, warmup = 1e3, chains = 4, cores = 4,
+  sample_prior = T,
+  file = "fits/model_1"
+)
+
+```
+
+Prior Predictive Simulation
+
+```{r, fig.width=13}
+tibble(
+  Intercept = rnorm(N, 3, 0.5),
+  sigma = rexp(N, 4)
+) %>% 
+  ggplot(aes(x = exp(Intercept + (sigma^2)/2)))+
+  geom_histogram(bins = 100)+
+  coord_cartesian(xlim = c(0, 100))
+```
+Prior Predictive Simulation for the hurdle:
+
+```{r, fig.width=13}
+tibble(
+  o = rnorm(N, -1, 1),
+  probs = inv_logit_scaled(o)
+) %>% 
+  ggplot(aes(x = probs))+
+  geom_histogram(bins = 100)
+
+
+```
+
 

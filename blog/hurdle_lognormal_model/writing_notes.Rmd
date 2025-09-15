@@ -1,0 +1,22 @@
+# Introduction
+
+Overall Summary. Objectives.
+
+# Intercept-only Model.
+
+1.  Data Simulation.
+2.  Writing on why this is two phenomena question and why OLS may not be helpful to disintegrate the effects.
+3.  Prior Predictive Simulation.
+4.  OLS Intercept only Model
+5.  BRMS Intercept only Model.
+6.  Comparison and more thoughts on the two phenomena
+
+# Group-level Interaction Model
+
+1.  Data Simulation and the reasoning behind it. Control District had more unemployment (more zeros) due to immigration but work hours remained similar while Treated district had increased unemployment as well was reduced work hours.
+
+2.  Descriptive Statistics in the form of Line Chart.
+
+3.  Comparison of OLS and group means for wh \> 0, and why there is a discrepancy.
+
+4.  BRMS model and why modelling both phenomenas separately provides us with better inference.

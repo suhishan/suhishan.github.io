@@ -9,9 +9,9 @@ fontfamily: OpenSans
 ```{r, include = FALSE}
 library(tidyverse)
 library(brms)
+library(patchwork)
 
-theme_set(theme_minimal() +
-            theme(panel.grid = element_blank()))
+theme_set(theme_minimal(base_size = 16))
   
 ```
 
@@ -85,4 +85,110 @@ tibble(
 
 ```
 
+Now, let's look at the model fit.
 
+```{r}
+posterior_summary(model_1)[1:3, ] %>% 
+  round(digits = 3)
+```
+In the original scale.
+
+The Model for work hours > 0
+
+```{r}
+wh_posterior_1 <- as_draws_df(model_1) %>% 
+  mutate(work_hours = exp(b_Intercept + (sigma ^2) / 2)) %>% 
+  ggplot(aes(x = work_hours))+
+  geom_density()
+```
+
+Model for the hurdle intercept i.e. the probability of zero.
+
+```{r}
+hu_posterior_1 <- as_draws_df(model_1) %>% 
+  mutate(probability  = inv_logit_scaled(b_hu_Intercept)) %>% 
+  ggplot(aes(x = probability))+
+  geom_density()
+
+
+```
+
+Both Figures side by side.
+
+```{r, fig.width=14}
+(wh_posterior_1 | hu_posterior_1)
+```
+
+# Group-Wise Interaction Effect.
+
+Suppose that average work hours differs by groups, may it be geographical or at different times. Think of a scenario of a treatment and a control, measure before and after certain labor market shock. Let's assume two neighbouring districts A and B, whereby A experience war at time period t and B didn't. Let's assume we have data for A and B before the war occurred, and the data for work hours after the war occurred. Let's assume the data is repeated cross section data. We can simulate it as follows:
+
+```{r}
+a_0 <-  3.7
+a_post <-  -0.05
+a_treat <-  -0.05
+a_pt <- -0.2
+
+g <- tibble(
+  post = rep(c(0, 1), each = 500), # time period 0 is before and time period 1 is after.
+  treat = rep(c(0, 1), times = 500 ), # 0 is no-war, 1 is war.
+  isZero = rbinom(N, 1, prob = 0.1 + 0.07 * post  +  #0.07 because of temporary immigration
+                    (0.03) * treat + 0.1 * (post * treat)),
+  
+  wh = (1 - isZero) * rlnorm(N, a_0 + a_post * post + 
+                               a_treat * treat + a_pt * (post * treat),
+                             sdlog = 0.4)
+)
+
+
+
+```
+
+4 groups:
+
+1 : Post = 0, Treat = 0
+2 : Post = 1, Treat = 1
+3 : Post = 0, Treat = 1
+4 : Post = 1, Treat = 1
+
+```{r}
+g <- g %>% mutate(
+  group = factor(1 + post + 2 * treat, 
+                 labels = c("Pre-Control", "Post-Control",
+                            "Pre-Treatment","Post-Treatment"))
+)
+
+```
+
+
+Let's look at what we simulated:
+
+```{r}
+g %>% 
+  group_by(group) %>% 
+  summarize(avg_wh = mean(wh)) %>% 
+  ggplot(aes(x = group, y = avg_wh))+
+  geom_linerange(aes(ymin = 0, ymax = avg_wh),color = "black",
+           linewidth = 1)
+
+g %>% 
+  group_by(group) %>% 
+  summarize(avg_isZero = mean(isZero)) %>% 
+  ggplot(aes(x = group, y = avg_isZero))+
+  geom_linerange(aes(ymin = 0, ymax = avg_isZero),color = "black",
+           linewidth = 1)
+
+
+```
+
+## OLS Model 
+
+```{r}
+# A normal OLS model.
+
+ols_group <- lm(wh ~ 0 + group, data = g)
+summary(ols_group)
+
+```
+
+Because the mean also counts and includes zeros, everything is muddled in. It's fine here where we can see that after the war, the war-trodden district both had lower work hours and more unemployment, but in cases where these two phenomena have different causes, or if war affects people in different ways, this analysis may lead us astray. 

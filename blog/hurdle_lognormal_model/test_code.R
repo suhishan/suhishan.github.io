@@ -63,3 +63,63 @@ tibble(
   ggplot(aes(x = probs))+
   geom_histogram(bins = 100)
 
+# Group-Wise Simulation
+
+a_0 <-  3.7
+a_post <-  -0.05
+a_treat <-  -0.05
+a_pt <- -0.2
+
+g <- tibble(
+  post = rep(c(0, 1), each = 500), # time period 0 is before and time period 1 is after.
+  treat = rep(c(0, 1), times = 500 ), # 0 is no-war, 1 is war.
+  isZero = rbinom(N, 1, prob = 0.1 + 0.02 * post  + 
+                    (0.03) * treat + 0.1 * (post * treat)),
+  
+  wh = (1 - isZero) * rlnorm(N, a_0 + a_post * post + 
+                               a_treat * treat + a_pt * (post * treat),
+                             sdlog = 0.4)
+)
+
+g %>% group_by(treat, post) %>% summarize(mean(isZero))
+g %>% group_by(treat, post) %>% summarize(mean(wh))
+sd(g$wh)
+
+#Understanding log normal stuff.
+
+# Let's make charts to show this stuff.
+
+
+g <- g %>% mutate(
+  group = factor(1 + post + 2 * treat, 
+                 labels = c("Pre-Control", "Post-Control",
+                            "Pre-Treatment","Post-Treatment"))
+)
+
+g %>% 
+  group_by(group) %>% 
+  summarize(avg_wh = mean(wh)) %>% 
+  ggplot(aes(x = group, y = avg_wh))+
+  geom_linerange(aes(ymin = 0, ymax = avg_wh),color = "black",
+           linewidth = 1)
+
+
+g %>% 
+  group_by(group) %>% 
+  summarize(avg_isZero = mean(isZero)) %>% 
+  ggplot(aes(x = group, y = avg_isZero))+
+  geom_linerange(aes(ymin = 0, ymax = avg_isZero),color = "black",
+           linewidth = 1)
+
+# A normal OLS model.
+
+ols_group <- lm(wh ~ 0 + group, data =g)
+summary(ols_group)
+
+g %>% 
+  filter(isZero !=1) %>% 
+  group_by(group) %>% 
+  summarise(mean(wh))
+
+
+

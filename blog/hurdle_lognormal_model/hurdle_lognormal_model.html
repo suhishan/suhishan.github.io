@@ -69,6 +69,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="hurdle_lognormal_model_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="hurdle_lognormal_model_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 </head>
 
@@ -81,10 +83,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
-  <li><a href="#modelling" id="toc-modelling" class="nav-link" data-scroll-target="#modelling">Modelling</a></li>
+  <li><a href="#hurdle-lognormal-likelihood" id="toc-hurdle-lognormal-likelihood" class="nav-link" data-scroll-target="#hurdle-lognormal-likelihood">Hurdle Lognormal Likelihood</a>
+  <ul class="collapse">
+  <li><a href="#data-simulation" id="toc-data-simulation" class="nav-link" data-scroll-target="#data-simulation">Data Simulation</a></li>
+  </ul></li>
+  <li><a href="#intercept-only-model." id="toc-intercept-only-model." class="nav-link" data-scroll-target="#intercept-only-model.">Intercept-only model.</a>
+  <ul class="collapse">
+  <li><a href="#prior-predictive-simulation" id="toc-prior-predictive-simulation" class="nav-link" data-scroll-target="#prior-predictive-simulation">Prior Predictive Simulation</a></li>
+  <li><a href="#model-fit." id="toc-model-fit." class="nav-link" data-scroll-target="#model-fit.">Model-fit.</a></li>
+  </ul></li>
   <li><a href="#group-wise-interaction-effect." id="toc-group-wise-interaction-effect." class="nav-link" data-scroll-target="#group-wise-interaction-effect.">Group-Wise Interaction Effect.</a>
   <ul class="collapse">
   <li><a href="#ols-model" id="toc-ols-model" class="nav-link" data-scroll-target="#ols-model">OLS Model</a></li>
+  <li><a href="#group_wise-interaction-brms-model." id="toc-group_wise-interaction-brms-model." class="nav-link" data-scroll-target="#group_wise-interaction-brms-model.">Group_wise interaction brms model.</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -116,14 +127,31 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="introduction" class="level1">
 <h1>Introduction</h1>
-<p>While working on a research project, I had to model <em>total hours worked</em>, which is a continuous metric that can be assumed to be normal, but with a sizable chunk of zeros as well. These values are all constrained to be positive because they are hours worked in the last 7 days. The problem is that in a standard OLS model, the outcome variable can take all possible real values, and even if I log the variable for positivity constraint, I am still left with the problem of modelling a sizable chunk of zeros that is expected when surveying people on their self-reported work hours.</p>
-<p>Let’s look at this with an example. Here, I simulate 250 observations of <em>work hours</em> as a log normal process with 15% of these values being 0 hours worked.</p>
+<p>While working on a research project, I had to model people’s work hours: the survey asked people to self-report how many hours they spent working in the past 7 days. There are multiple constraints to the seemingly innocent <em>work hours</em>:</p>
+<ol type="1">
+<li>It is naturally bounded to be positive.</li>
+<li>While people report their answers in integers, the variable seems clearly continuous.</li>
+<li>The variable tends to have a clear spike at and around zero. This is because there are multiple causes of economic inactivity such as unemployment, student and pensioner population, voluntary vacations and so on.</li>
+</ol>
+<p>The most distinguishing feature of a variable such as <code>work hours</code> is that it arises out of at least two generating processes. It is plausible to assume that there is one process that determines average incidence of observed 0s, and another one that determines average <em>non-zero</em> <em><code>work hours</code>.</em> This is precisely what fascinated me about this variable and why I figured that a Bayesian approach, specifically <code>brms</code> ’s <code>hurdle_lognormal</code> model may be better suited for inference.</p>
+<p>The Objectives of this article are:</p>
+<ol type="1">
+<li>Understand why a <code>hurdle_lognormal</code> likelihood suits the constraints that we have to work with.</li>
+<li>Simulate data and model probability of <code>hurdle</code> 0 and average non-zero <code>work hours</code> simultaneously in a single model.</li>
+<li>Include covariates and see why modelling the two separate phenomena aids in inference.</li>
+</ol>
+</section>
+<section id="hurdle-lognormal-likelihood" class="level1">
+<h1>Hurdle Lognormal Likelihood</h1>
+<section id="data-simulation" class="level2">
+<h2 class="anchored" data-anchor-id="data-simulation">Data Simulation</h2>
+<p>Let’s look at this with an example. Here, I simulate <span class="math inline">\(1000\)</span> observations of <code>work hours</code> as a lognormal process with 15% of these values being 0 hours worked.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>N <span class="ot">&lt;-</span> <span class="fl">1e3</span> <span class="co">#1e3 observations</span></span>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>N <span class="ot">&lt;-</span> <span class="fl">1e3</span> <span class="co">#1000 observations</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">isZero =</span> <span class="fu">rbinom</span>(N, <span class="dv">1</span>, <span class="fl">0.15</span>), <span class="co">#15% 0 observations</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">wh =</span> <span class="fu">ifelse</span>(isZero <span class="sc">==</span> <span class="dv">1</span>, <span class="dv">0</span>, <span class="fu">rlnorm</span>(N, <span class="fl">3.5</span>, <span class="fl">0.4</span>))</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">wh =</span> (<span class="dv">1</span> <span class="sc">-</span> isZero) <span class="sc">*</span><span class="fu">rlnorm</span>(N, <span class="fl">3.5</span>, <span class="fl">0.4</span>)</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>) </span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>d <span class="sc">%&gt;%</span> </span>
@@ -134,57 +162,85 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p><img src="hurdle_lognormal_model_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
-<p>Using a log normal distribution with the mean of around exp(3.5), we get a distribution of work hours that matches closely with reality. As we can see, if we assume 15% of people surveyed to report 0 hours worked, we are now working with a symmetric distribution that is bounded to be greater than 0 but is zero-inflated. While zero-inflated models are common for binomial or poisson processes, it is much harder to find and model variables that are zero-inflated while being continuous.</p>
+<p>In our data simulation, we can see that Work Hours <code>wh</code> is a function of <code>isZero</code> i.e.&nbsp;the probability of seeing zero, and if not <span class="math inline">\(0\)</span>, a log normal process with <span class="math inline">\(\mu_{log} = 3.5\)</span> and <span class="math inline">\(\sigma_{log}=0.4\)</span>. This results in a variable <code>wh</code> which contains around <span class="math inline">\(15 \%\)</span> zeros and average non-zero work hours of <span class="math inline">\(exp(\mu_{log} + \frac{\sigma_{log}^2}{2})\)</span>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(d<span class="sc">$</span>isZero)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.158</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Theoretical mean of non-zero work hours:</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">exp</span>(<span class="fl">3.5</span> <span class="sc">+</span> (<span class="fl">0.4</span><span class="sc">^</span><span class="dv">2</span>)<span class="sc">/</span><span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 35.87354</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Actual mean of non-zero work hours:</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(d<span class="sc">$</span>wh[d<span class="sc">$</span>isZero <span class="sc">==</span> <span class="dv">0</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 36.33543</code></pre>
+</div>
+</div>
 </section>
-<section id="modelling" class="level1">
-<h1>Modelling</h1>
-<p>Let’s take a peek at our model. We are assuming that wh is log normally distributed, which means that log(wh) is normally distributed. The model contains two parts. The first is only for the values of not being zero, that is the mu part. The second hu intercept is for the probability of a zero.</p>
-<p>The prior is normal(3, 0.5) because we assume before looking at the data that the log(wh) is normal and as such, the non-zero part of it is going to follow a normal distribution.</p>
+</section>
+<section id="intercept-only-model." class="level1">
+<h1>Intercept-only model.</h1>
+<p><code>model_1</code> is our first brms model and the parameters of our interest are:</p>
+<ol type="1">
+<li>Average Work Hours for people who worked at least 1 hour.</li>
+<li>Standard deviation of work hours for people who worked at least 1 hour.</li>
+<li>The probability of observing the <code>hurdle</code> i.e.&nbsp;<span class="math inline">\(0\)</span>.</li>
+</ol>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>model_1 <span class="ot">&lt;-</span> <span class="fu">brm</span>(</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> d,</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> hurdle_lognormal,</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bf</span>(wh <span class="sc">~</span> <span class="dv">1</span>,</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>     hu <span class="sc">~</span> <span class="dv">1</span>),</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">prior =</span> <span class="fu">c</span>(</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">3</span>, <span class="fl">0.5</span>), <span class="at">class =</span> Intercept, <span class="at">lb =</span> <span class="dv">0</span>),</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>), <span class="at">dpar =</span> <span class="st">"hu"</span>, <span class="at">class =</span> Intercept),</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">prior</span>(<span class="fu">exponential</span>(<span class="dv">4</span>), <span class="at">class =</span> sigma)</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  ),</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">iter =</span> <span class="fl">2e3</span>, <span class="at">warmup =</span> <span class="fl">1e3</span>, <span class="at">chains =</span> <span class="dv">4</span>, <span class="at">cores =</span> <span class="dv">4</span>,</span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">sample_prior =</span> T,</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">file =</span> <span class="st">"fits/model_1"</span></span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>model_1 <span class="ot">&lt;-</span> <span class="fu">brm</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> d,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> hurdle_lognormal,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bf</span>(wh <span class="sc">~</span> <span class="dv">1</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>     hu <span class="sc">~</span> <span class="dv">1</span>),</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">prior =</span> <span class="fu">c</span>(</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="fl">3.5</span>, <span class="fl">0.5</span>), <span class="at">class =</span> Intercept, <span class="at">lb =</span> <span class="dv">0</span>),</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>), <span class="at">dpar =</span> <span class="st">"hu"</span>, <span class="at">class =</span> Intercept),</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">prior</span>(<span class="fu">exponential</span>(<span class="dv">4</span>), <span class="at">class =</span> sigma)</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">iter =</span> <span class="fl">2e3</span>, <span class="at">warmup =</span> <span class="fl">1e3</span>, <span class="at">chains =</span> <span class="dv">4</span>, <span class="at">cores =</span> <span class="dv">4</span>,</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">sample_prior =</span> T,</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">file =</span> <span class="st">"fits/model_1"</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Prior Predictive Simulation</p>
+<section id="prior-predictive-simulation" class="level2">
+<h2 class="anchored" data-anchor-id="prior-predictive-simulation">Prior Predictive Simulation</h2>
+<p>Before we see the results, let’s first look at the prior predictive simulation for average non-zero work hours and the probability of hurdle. Before we look at the data, the model expects average non-zero work hours to be around <span class="math inline">\(exp(3.5 + \frac{0.25^2}{2}) = 34.16\)</span> hours where the two parameters that define this being the <code>Intercept</code> and <code>sigma(sd)</code> of <code>log(wh)</code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">Intercept =</span> <span class="fu">rnorm</span>(N, <span class="dv">3</span>, <span class="fl">0.5</span>),</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">sigma =</span> <span class="fu">rexp</span>(N, <span class="dv">4</span>)</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span> </span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">exp</span>(Intercept <span class="sc">+</span> (sigma<span class="sc">^</span><span class="dv">2</span>)<span class="sc">/</span><span class="dv">2</span>)))<span class="sc">+</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">100</span>)<span class="sc">+</span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">100</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="hurdle_lognormal_model_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="1248"></p>
-</div>
-</div>
-<p>Prior Predictive Simulation for the hurdle:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">o =</span> <span class="fu">rnorm</span>(N, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>),</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">probs =</span> <span class="fu">inv_logit_scaled</span>(o)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span> </span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> probs))<span class="sc">+</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">100</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">Intercept =</span> <span class="fu">rnorm</span>(N, <span class="fl">3.5</span>, <span class="fl">0.5</span>),</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">sigma =</span> <span class="fu">rexp</span>(N, <span class="dv">4</span>)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">exp</span>(Intercept <span class="sc">+</span> (sigma<span class="sc">^</span><span class="dv">2</span>)<span class="sc">/</span><span class="dv">2</span>)))<span class="sc">+</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">100</span>, <span class="at">fill =</span> <span class="st">"brown"</span>, <span class="at">color =</span> <span class="st">"black"</span>,</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>                 <span class="at">alpha =</span> <span class="dv">1</span><span class="sc">/</span><span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">110</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="hurdle_lognormal_model_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="1248"></p>
 </div>
 </div>
+<p>As for the probability of observing a <span class="math inline">\(0\)</span>, the model expects most of the probability mass around <code>inv_logit_scaled(-1)</code> = <span class="math inline">\(0.27\)</span> i.e <span class="math inline">\(27\%\)</span>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">o =</span> <span class="fu">rnorm</span>(N, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>),</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">probs =</span> <span class="fu">inv_logit_scaled</span>(o)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> probs))<span class="sc">+</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">50</span>, <span class="at">fill =</span> <span class="st">"brown"</span>, <span class="at">color =</span> <span class="st">"black"</span>,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>                 <span class="at">alpha =</span> <span class="dv">1</span><span class="sc">/</span><span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="hurdle_lognormal_model_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="1248"></p>
+</div>
+</div>
+</section>
+<section id="model-fit." class="level2">
+<h2 class="anchored" data-anchor-id="model-fit.">Model-fit.</h2>
 <p>Now, let’s look at the model fit.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">posterior_summary</span>(model_1)[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, ] <span class="sc">%&gt;%</span> </span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">round</span>(<span class="at">digits =</span> <span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">posterior_summary</span>(model_1)[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>, ] <span class="sc">%&gt;%</span> </span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">round</span>(<span class="at">digits =</span> <span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>               Estimate Est.Error   Q2.5  Q97.5
 b_Intercept       3.469     0.013  3.442  3.495
@@ -192,86 +248,113 @@ b_hu_Intercept   -1.772     0.089 -1.948 -1.599
 sigma             0.397     0.009  0.380  0.416</code></pre>
 </div>
 </div>
-<p>In the original scale.</p>
-<p>The Model for work hours &gt; 0</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>wh_posterior_1 <span class="ot">&lt;-</span> <span class="fu">as_draws_df</span>(model_1) <span class="sc">%&gt;%</span> </span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">work_hours =</span> <span class="fu">exp</span>(b_Intercept <span class="sc">+</span> (sigma <span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> <span class="dv">2</span>)) <span class="sc">%&gt;%</span> </span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> work_hours))<span class="sc">+</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>Model for the hurdle intercept i.e.&nbsp;the probability of zero.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>hu_posterior_1 <span class="ot">&lt;-</span> <span class="fu">as_draws_df</span>(model_1) <span class="sc">%&gt;%</span> </span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">probability  =</span> <span class="fu">inv_logit_scaled</span>(b_hu_Intercept)) <span class="sc">%&gt;%</span> </span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> probability))<span class="sc">+</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Work Hours Posterior</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>wh_posterior_1 <span class="ot">&lt;-</span> <span class="fu">as_draws_df</span>(model_1) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">work_hours =</span> <span class="fu">exp</span>(b_Intercept <span class="sc">+</span> (sigma <span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> <span class="dv">2</span>) <span class="co"># turning parameters into original scale</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> work_hours))<span class="sc">+</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="at">linewidth =</span> <span class="dv">2</span>)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Hurdle Posterior.</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>hu_posterior_1 <span class="ot">&lt;-</span> <span class="fu">as_draws_df</span>(model_1) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">probability  =</span> <span class="fu">inv_logit_scaled</span>(b_hu_Intercept)</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> probability))<span class="sc">+</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="at">linewidth =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Both Figures side by side.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>(wh_posterior_1 <span class="sc">|</span> hu_posterior_1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>(wh_posterior_1 <span class="sc">|</span> hu_posterior_1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="hurdle_lognormal_model_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid" width="1344"></p>
 </div>
 </div>
+<p>As expected, the model’s results matches closely with the sample average work hours of around <span class="math inline">\(35\)</span> hours and the <span class="math inline">\(15%\)</span> probability of observing a <span class="math inline">\(0\)</span>. However, this is different to a standard OLS result, where the separation of both phenomena require two separate models and two separate regressions.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Overall OLS</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(wh <span class="sc">~</span> <span class="dv">1</span>, <span class="at">data =</span> d)[<span class="dv">1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$coefficients
+(Intercept) 
+   30.59444 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># only for non-zero work Hours</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(wh <span class="sc">~</span> <span class="dv">1</span>, <span class="at">data =</span> d[d<span class="sc">$</span>wh <span class="sc">&gt;</span> <span class="dv">0</span>,])[<span class="dv">1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$coefficients
+(Intercept) 
+   36.33543 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># probability of zero.</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(isZero <span class="sc">~</span> <span class="dv">1</span>, <span class="at">data =</span> d)[<span class="dv">1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$coefficients
+(Intercept) 
+      0.158 </code></pre>
+</div>
+</div>
+</section>
 </section>
 <section id="group-wise-interaction-effect." class="level1">
 <h1>Group-Wise Interaction Effect.</h1>
 <p>Suppose that average work hours differs by groups, may it be geographical or at different times. Think of a scenario of a treatment and a control, measure before and after certain labor market shock. Let’s assume two neighbouring districts A and B, whereby A experience war at time period t and B didn’t. Let’s assume we have data for A and B before the war occurred, and the data for work hours after the war occurred. Let’s assume the data is repeated cross section data. We can simulate it as follows:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>a_0 <span class="ot">&lt;-</span>  <span class="fl">3.7</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>a_post <span class="ot">&lt;-</span>  <span class="sc">-</span><span class="fl">0.05</span></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>a_treat <span class="ot">&lt;-</span>  <span class="sc">-</span><span class="fl">0.05</span></span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>a_pt <span class="ot">&lt;-</span> <span class="sc">-</span><span class="fl">0.2</span></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">post =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>), <span class="at">each =</span> <span class="dv">500</span>), <span class="co"># time period 0 is before and time period 1 is after.</span></span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">treat =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>), <span class="at">times =</span> <span class="dv">500</span> ), <span class="co"># 0 is no-war, 1 is war.</span></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">isZero =</span> <span class="fu">rbinom</span>(N, <span class="dv">1</span>, <span class="at">prob =</span> <span class="fl">0.1</span> <span class="sc">+</span> <span class="fl">0.07</span> <span class="sc">*</span> post  <span class="sc">+</span>  <span class="co">#0.07 because of temporary immigration</span></span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>                    (<span class="fl">0.03</span>) <span class="sc">*</span> treat <span class="sc">+</span> <span class="fl">0.1</span> <span class="sc">*</span> (post <span class="sc">*</span> treat)),</span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">wh =</span> (<span class="dv">1</span> <span class="sc">-</span> isZero) <span class="sc">*</span> <span class="fu">rlnorm</span>(N, a_0 <span class="sc">+</span> a_post <span class="sc">*</span> post <span class="sc">+</span> </span>
-<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>                               a_treat <span class="sc">*</span> treat <span class="sc">+</span> a_pt <span class="sc">*</span> (post <span class="sc">*</span> treat),</span>
-<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>                             <span class="at">sdlog =</span> <span class="fl">0.4</span>)</span>
-<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>a_0 <span class="ot">&lt;-</span>  <span class="fl">3.7</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>a_post <span class="ot">&lt;-</span>  <span class="sc">-</span><span class="fl">0.05</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>a_treat <span class="ot">&lt;-</span>  <span class="sc">-</span><span class="fl">0.05</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>a_pt <span class="ot">&lt;-</span> <span class="sc">-</span><span class="fl">0.2</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">post =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>), <span class="at">each =</span> <span class="dv">500</span>), <span class="co"># time period 0 is before and time period 1 is after.</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">treat =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>), <span class="at">times =</span> <span class="dv">500</span> ), <span class="co"># 0 is no-war, 1 is war.</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">isZero =</span> <span class="fu">rbinom</span>(N, <span class="dv">1</span>, <span class="at">prob =</span> <span class="fl">0.1</span> <span class="sc">+</span> <span class="fl">0.07</span> <span class="sc">*</span> post  <span class="sc">+</span>  <span class="co">#0.07 because of temporary immigration</span></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>                    (<span class="fl">0.03</span>) <span class="sc">*</span> treat <span class="sc">+</span> <span class="fl">0.1</span> <span class="sc">*</span> (post <span class="sc">*</span> treat)),</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">wh =</span> (<span class="dv">1</span> <span class="sc">-</span> isZero) <span class="sc">*</span> <span class="fu">rlnorm</span>(N, a_0 <span class="sc">+</span> a_post <span class="sc">*</span> post <span class="sc">+</span> </span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>                               a_treat <span class="sc">*</span> treat <span class="sc">+</span> a_pt <span class="sc">*</span> (post <span class="sc">*</span> treat),</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>                             <span class="at">sdlog =</span> <span class="fl">0.4</span>)</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>4 groups:</p>
 <p>1 : Post = 0, Treat = 0 2 : Post = 1, Treat = 1 3 : Post = 0, Treat = 1 4 : Post = 1, Treat = 1</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> g <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">group =</span> <span class="fu">factor</span>(<span class="dv">1</span> <span class="sc">+</span> post <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> treat, </span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                 <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Pre-Control"</span>, <span class="st">"Post-Control"</span>,</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>                            <span class="st">"Pre-Treatment"</span>,<span class="st">"Post-Treatment"</span>))</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> g <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">group =</span> <span class="fu">factor</span>(<span class="dv">1</span> <span class="sc">+</span> post <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> treat, </span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>                 <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Pre-Control"</span>, <span class="st">"Post-Control"</span>,</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>                            <span class="st">"Pre-Treatment"</span>,<span class="st">"Post-Treatment"</span>))</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Let’s look at what we simulated:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>g <span class="sc">%&gt;%</span> </span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(group) <span class="sc">%&gt;%</span> </span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">avg_wh =</span> <span class="fu">mean</span>(wh)) <span class="sc">%&gt;%</span> </span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> group, <span class="at">y =</span> avg_wh))<span class="sc">+</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_linerange</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> <span class="dv">0</span>, <span class="at">ymax =</span> avg_wh),<span class="at">color =</span> <span class="st">"black"</span>,</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">linewidth =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>g <span class="sc">%&gt;%</span> </span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(group) <span class="sc">%&gt;%</span> </span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">avg_wh =</span> <span class="fu">mean</span>(wh)) <span class="sc">%&gt;%</span> </span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> group, <span class="at">y =</span> avg_wh))<span class="sc">+</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_linerange</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> <span class="dv">0</span>, <span class="at">ymax =</span> avg_wh),<span class="at">color =</span> <span class="st">"black"</span>,</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">linewidth =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="hurdle_lognormal_model_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid" width="672"></p>
+<p><img src="hurdle_lognormal_model_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid" width="672"></p>
 </div>
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>g <span class="sc">%&gt;%</span> </span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(group) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">avg_isZero =</span> <span class="fu">mean</span>(isZero)) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> group, <span class="at">y =</span> avg_isZero))<span class="sc">+</span></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_linerange</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> <span class="dv">0</span>, <span class="at">ymax =</span> avg_isZero),<span class="at">color =</span> <span class="st">"black"</span>,</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">linewidth =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>g <span class="sc">%&gt;%</span> </span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(group) <span class="sc">%&gt;%</span> </span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">avg_isZero =</span> <span class="fu">mean</span>(isZero)) <span class="sc">%&gt;%</span> </span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> group, <span class="at">y =</span> avg_isZero))<span class="sc">+</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_linerange</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> <span class="dv">0</span>, <span class="at">ymax =</span> avg_isZero),<span class="at">color =</span> <span class="st">"black"</span>,</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">linewidth =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="hurdle_lognormal_model_files/figure-html/unnamed-chunk-12-2.png" class="img-fluid" width="672"></p>
+<p><img src="hurdle_lognormal_model_files/figure-html/unnamed-chunk-13-2.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <section id="ols-model" class="level2">
 <h2 class="anchored" data-anchor-id="ols-model">OLS Model</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># A normal OLS model.</span></span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>ols_group <span class="ot">&lt;-</span> <span class="fu">lm</span>(wh <span class="sc">~</span> <span class="dv">0</span> <span class="sc">+</span> group, <span class="at">data =</span> g)</span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(ols_group)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># A normal OLS model.</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>ols_group <span class="ot">&lt;-</span> <span class="fu">lm</span>(wh <span class="sc">~</span> <span class="dv">0</span> <span class="sc">+</span> group, <span class="at">data =</span> g)</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(ols_group)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
 Call:
@@ -279,23 +362,42 @@ lm(formula = wh ~ 0 + group, data = g)
 
 Residuals:
     Min      1Q  Median      3Q     Max 
--40.551 -12.019   0.033  11.217 106.025 
+-38.964 -13.648  -0.655  12.630 101.144 
 
 Coefficients:
                     Estimate Std. Error t value Pr(&gt;|t|)    
-groupPre-Control      40.551      1.314   30.86   &lt;2e-16 ***
-groupPost-Control     35.173      1.314   26.77   &lt;2e-16 ***
-groupPre-Treatment    38.717      1.314   29.47   &lt;2e-16 ***
-groupPost-Treatment   23.997      1.314   18.26   &lt;2e-16 ***
+groupPre-Control      38.964      1.376   28.31   &lt;2e-16 ***
+groupPost-Control     35.661      1.376   25.91   &lt;2e-16 ***
+groupPre-Treatment    35.997      1.376   26.15   &lt;2e-16 ***
+groupPost-Treatment   22.695      1.376   16.49   &lt;2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 20.77 on 996 degrees of freedom
-Multiple R-squared:  0.7424,    Adjusted R-squared:  0.7414 
-F-statistic: 717.8 on 4 and 996 DF,  p-value: &lt; 2.2e-16</code></pre>
+Residual standard error: 21.76 on 996 degrees of freedom
+Multiple R-squared:  0.7091,    Adjusted R-squared:  0.708 
+F-statistic: 607.1 on 4 and 996 DF,  p-value: &lt; 2.2e-16</code></pre>
 </div>
 </div>
 <p>Because the mean also counts and includes zeros, everything is muddled in. It’s fine here where we can see that after the war, the war-trodden district both had lower work hours and more unemployment, but in cases where these two phenomena have different causes, or if war affects people in different ways, this analysis may lead us astray.</p>
+</section>
+<section id="group_wise-interaction-brms-model." class="level2">
+<h2 class="anchored" data-anchor-id="group_wise-interaction-brms-model.">Group_wise interaction brms model.</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>model_2 <span class="ot">&lt;-</span> <span class="fu">brm</span>(</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> g,</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> hurdle_lognormal,</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bf</span>(wh <span class="sc">~</span> <span class="dv">0</span> <span class="sc">+</span> group,</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>      hu <span class="sc">~</span> <span class="dv">0</span> <span class="sc">+</span> group),</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">prior =</span> <span class="fu">c</span>(</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">3</span>, <span class="fl">0.5</span>), <span class="at">class =</span> b, <span class="at">lb =</span> <span class="dv">0</span>),</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>), <span class="at">dpar =</span> <span class="st">"hu"</span>, <span class="at">class =</span> b),</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">prior</span>(<span class="fu">exponential</span>(<span class="dv">4</span>), <span class="at">class =</span> sigma)</span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">sample_prior =</span> T,</span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">iter =</span> <span class="dv">2000</span>, <span class="at">warmup =</span> <span class="dv">1000</span>, <span class="at">chains =</span> <span class="dv">4</span>, <span class="at">cores =</span> <span class="dv">4</span>,</span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">file =</span> <span class="st">"fits/model_2"</span></span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
 </section>
 

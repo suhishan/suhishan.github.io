@@ -1,11 +1,35 @@
 # Introduction
 
-Overall Summary. Objectives.
+While working on a research project, I had to model people's work hours: the survey asked people to self-report how many hours they spent working in the past 7 days. There are multiple constraints to the seemingly innocent *work hours*:
 
-# Intercept-only Model.
+1.  It is naturally bounded to be positive.
+2.  While people report their answers in integers, the variable seems clearly continuous.
+3.  The variable tends to have a clear spike at and around zero. This is because there are multiple causes of economic inactivity such as unemployment, student and pensioner population, voluntary vacations and so on.
 
-1.  Data Simulation.
-2.  Writing on why this is two phenomena question and why OLS may not be helpful to disintegrate the effects.
+The most distinguishing feature of a variable such as `work hours` is that they arise out of at least two generating processes. It is plausible to assume that there is one process that determines average incidence of observed 0s, and another one that determines average *non-zero* *`work hours`.* This is precisely what fascinated me about this variable and why I figured that a Bayesian approach, specifically `brms` 's `hurdle_lognormal` model maybe better suited for inference.
+
+The Objectives of this blog are:
+
+1.  Understand why a `hurdle_lognormal` likelihood suits the constraints that we have to work with.
+2.  Simulate data and model probability of `hurdle` 0 and average non-zero `work hours` simultaneously in a single model.
+3.  Include covariates and see why modelling the two separate phenomena aids in inference.
+
+# Hurdle Lognormal Model
+
+## Data simulation
+
+In our data simulation, we can see that Work Hours `wh` is a function of `isZero` i.e. the probability of seeing zero, and if not $0$, a log normal process with $\mu_{log} = 3.5$ and $\sigma_{log}=0.4$. This results in a variable `wh` which contains around $15 \%$ zeros and average non-zero work hours of $exp(\mu_{log} + \frac{\sigma_{log}^2}{2})$.
+
+## Intercept-only model:
+
+`model_1` is our first brms model and the parameters of our interest are:
+
+1.  Average Work Hours for people who worked at least 1 hours.
+2.  Standard deviation of work hours for people who worked at least 1 hours.
+3.  The probability of observing the `hurdle` i.e. $0$.
+
+Before we see the results, let's first look at the prior predictive simulation for average non-zero work hours and the probability of hurdle.
+
 3.  Prior Predictive Simulation.
 4.  OLS Intercept only Model
 5.  BRMS Intercept only Model.

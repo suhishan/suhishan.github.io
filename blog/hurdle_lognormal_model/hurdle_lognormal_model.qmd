@@ -11,22 +11,38 @@ library(tidyverse)
 library(brms)
 library(patchwork)
 
-theme_set(theme_minimal(base_size = 16))
+theme_set(theme_minimal(base_size = 20))
   
 ```
 
 # Introduction
 
-While working on a research project, I had to model *total hours worked*, which is a continuous metric that can be assumed to be normal, but with a sizable chunk of zeros as well. These values are all constrained to be positive because they are hours worked in the last 7 days. The problem is that in a standard OLS model, the outcome variable can take all possible real values, and even if I log the variable for positivity constraint, I am still left with the problem of modelling a sizable chunk of zeros that is expected when surveying people on their self-reported work hours. 
+While working on a research project, I had to model people's work hours: the survey asked people to self-report how many hours they spent working in the past 7 days. There are multiple constraints to the seemingly innocent *work hours*:
 
-Let's look at this with an example. Here, I simulate 250 observations of *work hours* as a log normal process with 15% of these values being 0 hours worked. 
+1.  It is naturally bounded to be positive.
+2.  While people report their answers in integers, the variable seems clearly continuous.
+3.  The variable tends to have a clear spike at and around zero. This is because there are multiple causes of economic inactivity such as unemployment, student and pensioner population, voluntary vacations and so on.
+
+The most distinguishing feature of a variable such as `work hours` is that it arises out of at least two generating processes. It is plausible to assume that there is one process that determines average incidence of observed 0s, and another one that determines average *non-zero* *`work hours`.* This is precisely what fascinated me about this variable and why I figured that a Bayesian approach, specifically `brms` 's `hurdle_lognormal` model may be better suited for inference.
+
+The Objectives of this article are:
+
+1.  Understand why a `hurdle_lognormal` likelihood suits the constraints that we have to work with.
+2.  Simulate data and model probability of `hurdle` 0 and average non-zero `work hours` simultaneously in a single model.
+3.  Include covariates and see why modelling the two separate phenomena aids in inference.
+
+# Hurdle Lognormal Likelihood
+
+## Data Simulation
+
+Let's look at this with an example. Here, I simulate $1000$ observations of `work hours` as a lognormal process with 15% of these values being 0 hours worked.
 
 ```{r}
-N <- 1e3 #1e3 observations
+N <- 1e3 #1000 observations
 
 d <- tibble(
   isZero = rbinom(N, 1, 0.15), #15% 0 observations
-  wh = ifelse(isZero == 1, 0, rlnorm(N, 3.5, 0.4))
+  wh = (1 - isZero) *rlnorm(N, 3.5, 0.4)
 ) 
 
 d %>% 
@@ -35,13 +51,26 @@ d %>%
   labs(x = "Work Hours")
 
 ```
-Using a log normal distribution with the mean of around exp(3.5), we get a distribution of work hours that matches closely with reality. As we can see, if we assume 15% of people surveyed to report 0 hours worked, we are now working with a symmetric distribution that is bounded to be greater than 0 but is zero-inflated. While zero-inflated models are common for binomial or poisson processes, it is much harder to find and model variables that are zero-inflated while being continuous.
 
-# Modelling
+In our data simulation, we can see that Work Hours `wh` is a function of `isZero` i.e. the probability of seeing zero, and if not $0$, a log normal process with $\mu_{log} = 3.5$ and $\sigma_{log}=0.4$. This results in a variable `wh` which contains around $15 \%$ zeros and average non-zero work hours of $exp(\mu_{log} + \frac{\sigma_{log}^2}{2})$.
 
-Let's take a peek at our model. We are assuming that wh is log normally distributed, which means that log(wh) is normally distributed. The model contains two parts. The first is only for the values of not being zero, that is the mu part. The second hu intercept is for the probability of a zero. 
+```{r}
+mean(d$isZero)
 
-The prior is normal(3, 0.5) because we assume before looking at the data that the log(wh) is normal and as such, the non-zero part of it is going to follow a normal distribution.
+# Theoretical mean of non-zero work hours:
+exp(3.5 + (0.4^2)/2)
+
+# Actual mean of non-zero work hours:
+mean(d$wh[d$isZero == 0])
+```
+
+# Intercept-only model.
+
+`model_1` is our first brms model and the parameters of our interest are:
+
+1.  Average Work Hours for people who worked at least 1 hour.
+2.  Standard deviation of work hours for people who worked at least 1 hour.
+3.  The probability of observing the `hurdle` i.e. $0$.
 
 ```{r, output = FALSE}
 model_1 <- brm(
@@ -50,7 +79,7 @@ model_1 <- brm(
   bf(wh ~ 1,
      hu ~ 1),
   prior = c(
-    prior(normal(3, 0.5), class = Intercept, lb = 0),
+    prior(normal(3.5, 0.5), class = Intercept, lb = 0),
     prior(normal(-1, 1), dpar = "hu", class = Intercept),
     prior(exponential(4), class = sigma)
   ),
@@ -61,18 +90,22 @@ model_1 <- brm(
 
 ```
 
-Prior Predictive Simulation
+## Prior Predictive Simulation
+
+Before we see the results, let's first look at the prior predictive simulation for average non-zero work hours and the probability of hurdle. Before we look at the data, the model expects average non-zero work hours to be around $exp(3.5 + \frac{0.25^2}{2}) = 34.16$ hours where the two parameters that define this being the `Intercept` and `sigma(sd)` of `log(wh)`.
 
 ```{r, fig.width=13}
 tibble(
-  Intercept = rnorm(N, 3, 0.5),
+  Intercept = rnorm(N, 3.5, 0.5),
   sigma = rexp(N, 4)
 ) %>% 
   ggplot(aes(x = exp(Intercept + (sigma^2)/2)))+
-  geom_histogram(bins = 100)+
-  coord_cartesian(xlim = c(0, 100))
+  geom_histogram(bins = 100, fill = "brown", color = "black",
+                 alpha = 1/2)+
+  coord_cartesian(xlim = c(0, 110))
 ```
-Prior Predictive Simulation for the hurdle:
+
+As for the probability of observing a $0$, the model expects most of the probability mass around `inv_logit_scaled(-1)` = $0.27$ i.e $27\%$.
 
 ```{r, fig.width=13}
 tibble(
@@ -80,10 +113,13 @@ tibble(
   probs = inv_logit_scaled(o)
 ) %>% 
   ggplot(aes(x = probs))+
-  geom_histogram(bins = 100)
+  geom_histogram(bins = 50, fill = "brown", color = "black",
+                 alpha = 1/2)
 
 
 ```
+
+## Model-fit.
 
 Now, let's look at the model fit.
 
@@ -91,25 +127,23 @@ Now, let's look at the model fit.
 posterior_summary(model_1)[1:3, ] %>% 
   round(digits = 3)
 ```
-In the original scale.
-
-The Model for work hours > 0
 
 ```{r}
+# Work Hours Posterior
 wh_posterior_1 <- as_draws_df(model_1) %>% 
-  mutate(work_hours = exp(b_Intercept + (sigma ^2) / 2)) %>% 
+  mutate(
+    work_hours = exp(b_Intercept + (sigma ^2) / 2) # turning parameters into original scale
+    ) %>% 
   ggplot(aes(x = work_hours))+
-  geom_density()
-```
+  geom_density(linewidth = 2)
 
-Model for the hurdle intercept i.e. the probability of zero.
-
-```{r}
+# Hurdle Posterior.
 hu_posterior_1 <- as_draws_df(model_1) %>% 
-  mutate(probability  = inv_logit_scaled(b_hu_Intercept)) %>% 
+  mutate(
+    probability  = inv_logit_scaled(b_hu_Intercept)
+    ) %>% 
   ggplot(aes(x = probability))+
-  geom_density()
-
+  geom_density(linewidth = 2)
 
 ```
 
@@ -118,6 +152,21 @@ Both Figures side by side.
 ```{r, fig.width=14}
 (wh_posterior_1 | hu_posterior_1)
 ```
+
+As expected, the model's results matches closely with the sample average work hours of around $35$ hours  and the $15%$ probability of observing a $0$. However, this is different to a standard OLS result, where the separation of both phenomena require two separate models and two separate regressions.
+
+```{r}
+# Overall OLS
+lm(wh ~ 1, data = d)[1]
+
+# only for non-zero work Hours
+lm(wh ~ 1, data = d[d$wh > 0,])[1]
+
+# probability of zero.
+lm(isZero ~ 1, data = d)[1]
+```
+
+
 
 # Group-Wise Interaction Effect.
 
@@ -146,10 +195,7 @@ g <- tibble(
 
 4 groups:
 
-1 : Post = 0, Treat = 0
-2 : Post = 1, Treat = 1
-3 : Post = 0, Treat = 1
-4 : Post = 1, Treat = 1
+1 : Post = 0, Treat = 0 2 : Post = 1, Treat = 1 3 : Post = 0, Treat = 1 4 : Post = 1, Treat = 1
 
 ```{r}
 g <- g %>% mutate(
@@ -159,7 +205,6 @@ g <- g %>% mutate(
 )
 
 ```
-
 
 Let's look at what we simulated:
 
@@ -181,7 +226,7 @@ g %>%
 
 ```
 
-## OLS Model 
+## OLS Model
 
 ```{r}
 # A normal OLS model.
@@ -191,4 +236,24 @@ summary(ols_group)
 
 ```
 
-Because the mean also counts and includes zeros, everything is muddled in. It's fine here where we can see that after the war, the war-trodden district both had lower work hours and more unemployment, but in cases where these two phenomena have different causes, or if war affects people in different ways, this analysis may lead us astray. 
+Because the mean also counts and includes zeros, everything is muddled in. It's fine here where we can see that after the war, the war-trodden district both had lower work hours and more unemployment, but in cases where these two phenomena have different causes, or if war affects people in different ways, this analysis may lead us astray.
+
+## Group_wise interaction brms model.
+
+```{r}
+model_2 <- brm(
+  data = g,
+  family = hurdle_lognormal,
+  bf(wh ~ 0 + group,
+      hu ~ 0 + group),
+  prior = c(
+    prior(normal(3, 0.5), class = b, lb = 0),
+    prior(normal(-1, 1), dpar = "hu", class = b),
+    prior(exponential(4), class = sigma)
+  ),
+  sample_prior = T,
+  iter = 2000, warmup = 1000, chains = 4, cores = 4,
+  file = "fits/model_2"
+)
+
+```

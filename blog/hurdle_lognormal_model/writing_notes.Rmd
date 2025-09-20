@@ -37,6 +37,15 @@ Before we see the results, let's first look at the prior predictive simulation f
 
 # Group-level Interaction Model
 
+The intercept-only model is useful for estimating simple average parameters, but more often than not, we want to see differences in outcomes that arise out of differences in predictors. One such instance is the conventional two-way interaction model where the average for outcome depends upon the joint value of two predictors. For example, let's assume two adjacent districts A and B : A was relatively untouched by the foils of some civil war while district B was heavily affected with high number of casualties. If the conflict lasted for a year at time $t$, let's assume we have a randomly sampled cross-section of $250$ people each in time $(t-1)$ i.e. before the conflict, and similarly random cross-section of $250$ people each after the conflict at time period $(t+1)$. We want to see the effect of war on the probability of working $0$ hours, the hurdle, and the effect on hours worked. This scenario resembles the conventional Difference-in-difference scenario.
+
+Let's perform a generative simulation for the afore-mentioned repeated cross-sectional data:
+
+
+
+
+
+
 1.  Data Simulation and the reasoning behind it. Control District had more unemployment (more zeros) due to immigration but work hours remained similar while Treated district had increased unemployment as well was reduced work hours.
 
 2.  Descriptive Statistics in the form of Line Chart.

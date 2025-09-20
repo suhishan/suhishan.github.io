@@ -116,10 +116,47 @@ g %>%
 ols_group <- lm(wh ~ 0 + group, data =g)
 summary(ols_group)
 
+ols_group <- lm(wh ~ 1 + post + treat + post*treat, data = g[g$isZero == 0,])
+summary(ols_group)
+
+
 g %>% 
   filter(isZero !=1) %>% 
   group_by(group) %>% 
   summarise(mean(wh))
 
 
+a <- lm(wh ~ 1, data = d[d$wh>0,])
+a
+mean(d$wh)
 
+mean(inv_logit_scaled(rnorm(N, -1.5, 1)))
+g %>% group_by(group) %>% 
+  summarize(mean(isZero))
+
+
+post %>% 
+  data.frame() %>% 
+  mutate(
+    wh_did_contrast = (log_to_og(.[[4]], sigma) - log_to_og(.[[2]], sigma)) - 
+                   (log_to_og(.[[3]], sigma) - log_to_og(.[[1]], sigma)),
+    isZero_did_contrast = (inv_logit_scaled(.[[8]]) - inv_logit_scaled(.[[6]])) - 
+                        (inv_logit_scaled(.[[7]]) -inv_logit_scaled(.[[5]]))
+  ) %>% 
+  mean_qi(wh_did_contrast, isZero_did_contrast)
+
+
+
+post %>% 
+  mutate(
+    hello = post[[4]] - post[[2]]
+  ) %>% View()
+
+
+log_to_og(3.7, 0.4) - log_to_og(3.5, 0.4)
+
+mean(d$wh)
+
+
+
+  

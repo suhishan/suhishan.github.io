@@ -10,6 +10,7 @@ fontfamily: OpenSans
 library(tidyverse)
 library(brms)
 library(patchwork)
+library(tidybayes)
 
 theme_set(theme_minimal(base_size = 20))
   
@@ -38,6 +39,7 @@ The Objectives of this article are:
 Let's look at this with an example. Here, I simulate $1000$ observations of `work hours` as a lognormal process with 15% of these values being 0 hours worked.
 
 ```{r}
+set.seed(42)
 N <- 1e3 #1000 observations
 
 d <- tibble(
@@ -79,8 +81,8 @@ model_1 <- brm(
   bf(wh ~ 1,
      hu ~ 1),
   prior = c(
-    prior(normal(3.5, 0.5), class = Intercept, lb = 0),
-    prior(normal(-1, 1), dpar = "hu", class = Intercept),
+    prior(normal(3.5, 0.4), class = Intercept, lb = 0),
+    prior(normal(-1.5, 1), dpar = "hu", class = Intercept),
     prior(exponential(4), class = sigma)
   ),
   iter = 2e3, warmup = 1e3, chains = 4, cores = 4,
@@ -96,7 +98,7 @@ Before we see the results, let's first look at the prior predictive simulation f
 
 ```{r, fig.width=13}
 tibble(
-  Intercept = rnorm(N, 3.5, 0.5),
+  Intercept = rnorm(N, 3.5, 0.4),
   sigma = rexp(N, 4)
 ) %>% 
   ggplot(aes(x = exp(Intercept + (sigma^2)/2)))+
@@ -105,11 +107,11 @@ tibble(
   coord_cartesian(xlim = c(0, 110))
 ```
 
-As for the probability of observing a $0$, the model expects most of the probability mass around `inv_logit_scaled(-1)` = $0.27$ i.e $27\%$.
+As for the probability of observing a $0$, the model expects most of the probability mass around `mean(inv_logit_scale(rnorm(N, -1, 1)))` = $0.21$ i.e $21\%$.
 
 ```{r, fig.width=13}
 tibble(
-  o = rnorm(N, -1, 1),
+  o = rnorm(N, -1.5, 1),
   probs = inv_logit_scaled(o)
 ) %>% 
   ggplot(aes(x = probs))+
@@ -153,7 +155,7 @@ Both Figures side by side.
 (wh_posterior_1 | hu_posterior_1)
 ```
 
-As expected, the model's results matches closely with the sample average work hours of around $35$ hours  and the $15%$ probability of observing a $0$. However, this is different to a standard OLS result, where the separation of both phenomena require two separate models and two separate regressions.
+As expected, the model's results matches closely with the sample average work hours of around $35$ hours and the $15%$ probability of observing a $0$. However, this is different to a standard OLS result, where the separation of both phenomena require two separate models and two separate regressions.
 
 ```{r}
 # Overall OLS
@@ -163,16 +165,17 @@ lm(wh ~ 1, data = d)[1]
 lm(wh ~ 1, data = d[d$wh > 0,])[1]
 
 # probability of zero.
-lm(isZero ~ 1, data = d)[1]
+glm(isZero ~ 1, data = d, family= binomial(link = "logit"))[1]
 ```
-
-
 
 # Group-Wise Interaction Effect.
 
-Suppose that average work hours differs by groups, may it be geographical or at different times. Think of a scenario of a treatment and a control, measure before and after certain labor market shock. Let's assume two neighbouring districts A and B, whereby A experience war at time period t and B didn't. Let's assume we have data for A and B before the war occurred, and the data for work hours after the war occurred. Let's assume the data is repeated cross section data. We can simulate it as follows:
+The intercept-only model is useful for estimating simple average parameters, but more often than not, we want to see differences in outcomes that arise out of differences in predictors. One such instance is the conventional two-way interaction model where the average for outcome depends upon the joint value of two predictors. For example, let's assume two adjacent districts A and B : A was relatively untouched by the foils of some civil war while district B was heavily affected with high number of casualties. If the conflict lasted for a year at time $t$, let's assume we have a randomly sampled cross-section of $250$ people each in time $(t-1)$ i.e. before the conflict, and similarly random cross-section of $250$ people each after the conflict at time period $(t+1)$. We want to see the effect of war on the probability of working $0$ hours, the hurdle, and the effect on hours worked. This scenario resembles the conventional Difference-in-difference scenario.
+
+Let's perform a generative simulation for the afore-mentioned repeated cross-sectional data:
 
 ```{r}
+set.seed(44)
 a_0 <-  3.7
 a_post <-  -0.05
 a_treat <-  -0.05
@@ -181,8 +184,8 @@ a_pt <- -0.2
 g <- tibble(
   post = rep(c(0, 1), each = 500), # time period 0 is before and time period 1 is after.
   treat = rep(c(0, 1), times = 500 ), # 0 is no-war, 1 is war.
-  isZero = rbinom(N, 1, prob = 0.1 + 0.07 * post  +  #0.07 because of temporary immigration
-                    (0.03) * treat + 0.1 * (post * treat)),
+  isZero = rbinom(N, 1, prob = 0.1 + 0.1 * post  +  #0.07 because of temporary immigration
+                    (0.01) * treat + 0.1 * (post * treat)),
   
   wh = (1 - isZero) * rlnorm(N, a_0 + a_post * post + 
                                a_treat * treat + a_pt * (post * treat),
@@ -193,9 +196,14 @@ g <- tibble(
 
 ```
 
-4 groups:
+We can categorize $post = {0, 1}$ and $treat = {0, 1}$ jointly in terms of four interaction groups:
 
-1 : Post = 0, Treat = 0 2 : Post = 1, Treat = 1 3 : Post = 0, Treat = 1 4 : Post = 1, Treat = 1
+| Value | Group                      | Description    |
+|-------|----------------------------|----------------|
+| 1     | $post = 0$ and $treat = 0$ | Pre-Control    |
+| 2     | $post = 1$ and $treat = 0$ | Post-Control   |
+| 3     | $post = 0$ and $treat = 1$ | Pre-Treatment  |
+| 4     | $post = 1$ and $treat = 1$ | Post-Treatment |
 
 ```{r}
 g <- g %>% mutate(
@@ -208,37 +216,78 @@ g <- g %>% mutate(
 
 Let's look at what we simulated:
 
-```{r}
+```{r, fig.width = 12}
 g %>% 
   group_by(group) %>% 
   summarize(avg_wh = mean(wh)) %>% 
   ggplot(aes(x = group, y = avg_wh))+
   geom_linerange(aes(ymin = 0, ymax = avg_wh),color = "black",
-           linewidth = 1)
+           linewidth = 1)+
+  labs(subtitle = "Average non-zero work hours by group", y = "",
+       x = "Groups")
+```
 
+```{r, fig.width=12}
 g %>% 
   group_by(group) %>% 
   summarize(avg_isZero = mean(isZero)) %>% 
   ggplot(aes(x = group, y = avg_isZero))+
   geom_linerange(aes(ymin = 0, ymax = avg_isZero),color = "black",
-           linewidth = 1)
+           linewidth = 1)+
+  labs(subtitle = "Proportion of 0 work hours observed", 
+       y = "",
+       x = "Group")
 
 
 ```
 
-## OLS Model
+Average work hours is simulated to be lower post-war for district B (the treatment district). However, the probability of working $0$ hours, while high for post-war district, is also relatively high for post-control district as well. The logic for this is my DGP assumption that workers from war-afflicted districts migrated to district A and as such, the post-control cross-section sees a lot of people looking for work and therefore $0$ hours worked. The data is also generated in this manner to hammer home the fact that *work hours* incorporates two simultaneous processes, and modelling each of them separately yields accurate inferences. 
+
+## Single Phenomena OLS Model
+The expected difference-in-difference contrast in non-zero work hours is close to $8$ hours as per the generative model.
+
+```{r}
+# A function to turn E(log(x)) to E(x)
+log_to_og <- function(log_mean, sigma) {
+  return (exp(log_mean + (sigma^2)/2))
+}
+
+# Expected DiD Contrast in Work Hours
+log_to_og(3.7, 0.4) - log_to_og(3.7 + a_pt, 0.4)
+```
+However, if we estimate the did coefficient using simple OLS, the result does not match with the expected difference (barring simulation variance) as can be seen from the results below.
 
 ```{r}
 # A normal OLS model.
 
-ols_group <- lm(wh ~ 0 + group, data = g)
+ols_group <- lm(wh ~ 1 + post + treat + post*treat, data = g)
 summary(ols_group)
 
 ```
 
-Because the mean also counts and includes zeros, everything is muddled in. It's fine here where we can see that after the war, the war-trodden district both had lower work hours and more unemployment, but in cases where these two phenomena have different causes, or if war affects people in different ways, this analysis may lead us astray.
+While OLS correctly estimates war's negative effect on average work hours, the magnitude is overblown : the estimate from the OLS is $-10$ hours, while the expected difference should be close to $-8$ hours. The reasons for this are:
 
-## Group_wise interaction brms model.
+1. The magnitude of the effect `post:treat` is an overall effect of total $0$s and non-zero work hours. Similarly, the negative work hours in the post-control (here `post` hours) is largely driven by the large numbers of zeros observed in that group.
+2. To model the probability of observing zeros, we have write and interpret a separate model. 
+
+```{r}
+isZero_glm <- glm(isZero ~ 1 + post + treat + post*treat, data = g,
+            family = binomial(link = "logit"))
+
+b_0 <- plogis(coef(isZero_glm)[1])
+b_post <- plogis(coef(isZero_glm)[1] + coef(isZero_glm)[2])
+b_treat <- plogis(coef(isZero_glm)[1] + coef(isZero_glm)[3])
+b_pt <- plogis(coef(isZero_glm)[1] + coef(isZero_glm)[2] + 
+               coef(isZero_glm)[3] + coef(isZero_glm)[4])
+
+(did_coefficient <- (b_pt - b_treat) - (b_post - b_0))
+
+```
+
+3. While beyond the scope of this paper, it can be true that the probability of observing higher zeros and reduced work hours are not independent, and thus this could be modelled in a Bayesian framework, which is better than modelling both events separately. 
+
+## Group wise interaction brms model.
+Instead of modelling both phenomena separately, we can use a `hurdle_lognormal` model to make our calculations and inference easy. The only aspect changed in `model_2` is that we have now incorporated `group` into our brms formula, which means we will have four different parameters for average non-zero work hours for each group, and four different hurdle parameters. 
 
 ```{r}
 model_2 <- brm(
@@ -256,4 +305,34 @@ model_2 <- brm(
   file = "fits/model_2"
 )
 
+post <- as_draws_df(model_2)
 ```
+
+Computing the DiD Contrast from model 2:
+
+
+```{r}
+
+post %>% 
+  data.frame() %>% 
+  mutate(
+    wh_did_contrast = (log_to_og(.[[4]], sigma) - log_to_og(.[[2]], sigma)) - 
+                   (log_to_og(.[[3]], sigma) - log_to_og(.[[1]], sigma))
+  ) %>% 
+  mean_qi(wh_did_contrast)
+
+```
+This results is much closer to the original expected difference that we calculated deterministically. 
+
+```{r}
+post %>% 
+  data.frame() %>% 
+  mutate(
+    isZero_did_contrast = (inv_logit_scaled(.[[8]]) - inv_logit_scaled(.[[6]])) - 
+                   (inv_logit_scaled(.[[7]]) - inv_logit_scaled(.[[5]]))
+  ) %>% 
+  mean_qi(isZero_did_contrast)
+```
+In a similar vein, the same model also handily provides us the did contrast for observing a hurdle i.e. $0$.
+
+The overall lesson that we gather is that we are able to compute the did contrast for both work hours and the probability of $0$ in a single model using a Bayesian `hurdle_lognormal` model. The model allows us to bake in the natural constraints (positivity constraint, zero-inflation) using apt distributions for likelihood, and at the same time, allows us to model the dual-phenomena of zero observations and average non-zero observations in the same model. If one so chooses, we can include separate covariates for `hurdle (hu)` and `wh` instead of the single `group` interaction that I chose if such a necessity arises.

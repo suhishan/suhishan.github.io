@@ -1,32 +1,83 @@
+/* Big Stuff */
 html {
-        font-size: 20px;
+        
         font-family: "Open Sans", sans-serif;
+
 }
 
-h1 {
-        font-size:22px;
-}
 
-p{
-        font-size:20px;
-        line-height: 1.35;
-}
 
 body {
 
         width: 800px;
         margin: 0 auto;
-        padding: 20px 20px 20px 20px;
+        padding: 15px 15px 15px 15px;
 }
 
-img {
-  display: block;
-  margin: 0 auto;
-  width: 50%;
-  position: absolute;
-  top :50px;
-  right:100px;
 
-  width: 200px;
+
+/* Navbar */
+
+.navbar {
+        display: flex;
+        align-items: center;
+        position: sticky;
+        background-color: rgb(245, 245, 245);
+        font-size: 18pt;
 }
 
+.navlist {
+        display: flex;
+        list-style: none;
+}
+
+.navlist li {
+        margin-right: 20px; 
+}
+
+
+/* Blog and blog list */
+.bloglist {
+        display: flex grid;
+        list-style: none;
+}
+
+.bloglist li {
+        padding:10px;
+        font-size: 18pt;
+}
+
+/* Blog content Div */
+
+.blogcontent {
+        
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 800px;
+        
+        
+}
+
+
+/* Links */
+
+a {
+        text-decoration: none;
+        font-weight: bold;
+}
+
+a:link{
+        color: black
+}
+
+a:visited{
+        color: rgb(29, 29, 29)
+}
+
+
+/* Paragraphs */
+
+p {
+        font-size: 14pt;
+}
